@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -15,7 +16,10 @@ func main() {
 	logrus.SetOutput(os.Stdout)
 	c := twitchws.NewClient(
 		websocketTwitchTestServer,
-		twitchws.WithOnWelcome(onWelcomeEvent))
+		twitchws.WithOnWelcome(onWelcomeEvent),
+		twitchws.WithOnNotification(onNotificationEvent),
+		twitchws.WithOnConnect(onConnect),
+		twitchws.WithOnDisconnect(onDisconnect))
 
 	err := c.Connect()
 
@@ -39,4 +43,21 @@ func main() {
 func onWelcomeEvent(metadata twitchws.Metadata, payload twitchws.Payload) {
 	logrus.Debugf("Metadata: %+v", metadata)
 	logrus.Debugf("Payload: %+v", payload)
+}
+
+func onNotificationEvent(metadata twitchws.Metadata, payload twitchws.Payload) {
+	notification := payload.Payload.(twitchws.Notification)
+
+	switch event := notification.Event.(type) {
+	case *twitchws.ChannelFollowEvent:
+		logrus.Debugf("Channel follow: %+v", event)
+	}
+}
+
+func onConnect() {
+	logrus.Debugf("Connected: %s", time.Now().Format(time.RFC3339))
+}
+
+func onDisconnect() {
+	logrus.Debugf("Disconnected: %s", time.Now().Format(time.RFC3339))
 }
