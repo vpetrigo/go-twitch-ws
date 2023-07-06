@@ -29,9 +29,9 @@ type clientState int
 const websocketTwitch = "wss://eventsub.wss.twitch.tv/ws"
 
 var (
-	AlreadyInUse     = errors.New("client already in use")
-	NotConnected     = errors.New("client is not connected")
-	ConnectionFailed = errors.New("failed to setup connection")
+	AlreadyInUse     = errors.New("client already in use")      // WebSocket client is already in use.
+	NotConnected     = errors.New("client is not connected")    // WebSocket client is not connected
+	ConnectionFailed = errors.New("failed to setup connection") // Failed to set up WebSocket connection
 )
 
 var (
