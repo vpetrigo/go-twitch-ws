@@ -1,0 +1,50 @@
+- [x] Channel Update
+- [x] Channel Follow
+- [ ] Channel Subscribe
+- [ ] Channel Subscription End
+- [ ] Channel Subscription Gift
+- [ ] Channel Subscription Message
+- [ ] Channel Cheer
+- [ ] Channel Raid
+- [ ] Channel Ban
+- [ ] Channel Unban
+- [ ] Channel Moderator Add
+- [ ] Channel Moderator Remove
+- [ ] Channel Guest Star Session Begin
+- [ ] Channel Guest Star Session End
+- [ ] Channel Guest Star Guest Update
+- [ ] Channel Guest Star Slot Update
+- [ ] Channel Guest Star Settings Update
+- [ ] Channel Channel Points Custom Reward Add
+- [ ] Channel Channel Points Custom Reward Update
+- [ ] Channel Channel Points Custom Reward Remove
+- [ ] Channel Channel Points Custom Reward Redemption Add
+- [ ] Channel Channel Points Custom Reward Redemption Update
+- [ ] Channel Poll Begin
+- [ ] Channel Poll Progress
+- [ ] Channel Poll End
+- [ ] Channel Prediction Begin
+- [ ] Channel Prediction Progress
+- [ ] Channel Prediction Lock
+- [ ] Channel Prediction End
+- [ ] Channel Charity Campaign Donate
+- [ ] Channel Charity Campaign Start
+- [ ] Channel Charity Campaign Progress
+- [ ] Channel Charity Campaign Stop
+- [ ] Drop Entitlement Grant
+- [ ] Extension Bits Transaction Create
+- [ ] Channel Goal Begin
+- [ ] Channel Goal Progress
+- [ ] Channel Goal End
+- [ ] Channel Hype Train Begin
+- [ ] Channel Hype Train Progress
+- [ ] Channel Hype Train End
+- [ ] Channel Shield Mode Begin
+- [ ] Channel Shield Mode End
+- [ ] Channel Shoutout Create
+- [ ] Channel Shoutout Receive
+- [x] Stream Online
+- [x] Stream Offline
+- [ ] User Authorization Grant
+- [ ] User Authorization Revoke
+- [ ] User Update
