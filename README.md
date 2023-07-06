@@ -4,4 +4,4 @@
 
 ## Design
 
-- [Supported EventSub Notifications](docs/SUPPORTED_EVENTSUB.md)
+- [Implementation status](docs/SUPPORTED.md)

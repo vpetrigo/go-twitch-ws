@@ -1,3 +1,13 @@
+# WebSocket messages
+
+- [x] Welcome Message
+- [x] Keepalive Message
+- [x] Notification Message
+- [ ] Revocation Message
+- [ ] Reconnect Message
+
+# EventSub Notifications
+
 - [x] Channel Update
 - [x] Channel Follow
 - [ ] Channel Subscribe
