@@ -1,0 +1,61 @@
+package twitchws
+
+type eventSubScope struct {
+	Version string
+	MsgType interface{}
+}
+
+var (
+	eventSubTypes = map[string]eventSubScope{
+		"channel.update":                                         {Version: "beta", MsgType: &ChannelUpdateEvent{}},
+		"channel.follow":                                         {Version: "2", MsgType: &ChannelFollowEvent{}},
+		"channel.subscribe":                                      {Version: "1", MsgType: &ChannelSubscribeEvent{}},
+		"channel.subscription.end":                               {Version: "1", MsgType: &ChannelSubscriptionEndEvent{}},
+		"channel.subscription.gift":                              {Version: "1", MsgType: &ChannelSubscriptionGiftEvent{}},
+		"channel.subscription.message":                           {Version: "1", MsgType: &ChannelSubscriptionMessageEvent{}},
+		"channel.cheer":                                          {Version: "1", MsgType: &ChannelCheerEvent{}},
+		"channel.raid":                                           {Version: "1", MsgType: &ChannelRaidEvent{}},
+		"channel.ban":                                            {Version: "1", MsgType: &ChannelBanEvent{}},
+		"channel.unban":                                          {Version: "1", MsgType: &ChannelUnbanEvent{}},
+		"channel.moderator.add":                                  {Version: "1", MsgType: &ChannelModeratorAddEvent{}},
+		"channel.moderator.remove":                               {Version: "1", MsgType: &ChannelModeratorRemoveEvent{}},
+		"channel.guest_star_session.begin":                       {Version: "beta", MsgType: &ChannelGuestStarSessionBeginEvent{}},
+		"channel.guest_star_session.end":                         {Version: "beta", MsgType: &ChannelGuestStarSessionEndEvent{}},
+		"channel.guest_star_guest.update":                        {Version: "beta", MsgType: &ChannelGuestStarGuestUpdateEvent{}},
+		"channel.guest_star_slot.update":                         {Version: "beta", MsgType: &ChannelGuestStarSlotUpdateEvent{}},
+		"channel.guest_star_settings.update":                     {Version: "beta", MsgType: &ChannelGuestStarSettingsUpdateEvent{}},
+		"channel.channel_points_custom_reward.add":               {Version: "1", MsgType: &ChannelChannelPointsCustomRewardAddEvent{}},
+		"channel.channel_points_custom_reward.update":            {Version: "1", MsgType: &ChannelChannelPointsCustomRewardUpdateEvent{}},
+		"channel.channel_points_custom_reward.remove":            {Version: "1", MsgType: &ChannelChannelPointsCustomRewardRemoveEvent{}},
+		"channel.channel_points_custom_reward_redemption.add":    {Version: "1", MsgType: &ChannelChannelPointsCustomRewardRedemptionAddEvent{}},
+		"channel.channel_points_custom_reward_redemption.update": {Version: "1", MsgType: &ChannelChannelPointsCustomRewardRedemptionUpdateEvent{}},
+		"channel.poll.begin":                                     {Version: "1", MsgType: &ChannelPollBeginEvent{}},
+		"channel.poll.progress":                                  {Version: "1", MsgType: &ChannelPollProgressEvent{}},
+		"channel.poll.end":                                       {Version: "1", MsgType: &ChannelPollEndEvent{}},
+		"channel.prediction.begin":                               {Version: "1", MsgType: &ChannelPredictionBeginEvent{}},
+		"channel.prediction.progress":                            {Version: "1", MsgType: &ChannelPredictionProgressEvent{}},
+		"channel.prediction.lock":                                {Version: "1", MsgType: &ChannelPredictionLockEvent{}},
+		"channel.prediction.end":                                 {Version: "1", MsgType: &ChannelPredictionEndEvent{}},
+		"channel.charity_campaign.donate":                        {Version: "1", MsgType: &ChannelCharityCampaignDonateEvent{}},
+		"channel.charity_campaign.start":                         {Version: "1", MsgType: &ChannelCharityCampaignStartEvent{}},
+		"channel.charity_campaign.progress":                      {Version: "1", MsgType: &ChannelCharityCampaignProgressEvent{}},
+		"channel.charity_campaign.stop":                          {Version: "1", MsgType: &ChannelCharityCampaignStopEvent{}},
+		"drop.entitlement.grant":                                 {Version: "1", MsgType: &DropEntitlementGrantEvent{}},
+		"extension.bits_transaction.create":                      {Version: "1", MsgType: &ExtensionBitsTransactionCreateEvent{}},
+		"channel.goal.begin":                                     {Version: "1", MsgType: &ChannelGoalBeginEvent{}},
+		"channel.goal.progress":                                  {Version: "1", MsgType: &ChannelGoalProgressEvent{}},
+		"channel.goal.end":                                       {Version: "1", MsgType: &ChannelGoalEndEvent{}},
+		"channel.hype_train.begin":                               {Version: "1", MsgType: &ChannelHypeTrainBeginEvent{}},
+		"channel.hype_train.progress":                            {Version: "1", MsgType: &ChannelHypeTrainProgressEvent{}},
+		"channel.hype_train.end":                                 {Version: "1", MsgType: &ChannelHypeTrainEndEvent{}},
+		"channel.shield_mode.begin":                              {Version: "1", MsgType: &ChannelShieldModeBeginEvent{}},
+		"channel.shield_mode.end":                                {Version: "1", MsgType: &ChannelShieldModeEndEvent{}},
+		"channel.shoutout.create":                                {Version: "1", MsgType: &ChannelShoutoutCreateEvent{}},
+		"channel.shoutout.receive":                               {Version: "1", MsgType: &ChannelShoutoutReceiveEvent{}},
+		"stream.online":                                          {Version: "1", MsgType: &StreamOnlineEvent{}},
+		"stream.offline":                                         {Version: "1", MsgType: &StreamOfflineEvent{}},
+		"user.authorization.grant":                               {Version: "1", MsgType: &UserAuthorizationGrantEvent{}},
+		"user.authorization.revoke":                              {Version: "1", MsgType: &UserAuthorizationRevokeEvent{}},
+		"user.update":                                            {Version: "1", MsgType: &UserUpdateEvent{}},
+	}
+)
