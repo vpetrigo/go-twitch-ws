@@ -22,9 +22,9 @@ type transport struct {
 
 type OnEventFn func()
 type OnMessageEventFn func(Metadata, Payload)
-type Option func(*Client)
 
 type websocketMessageFn func(*Client, Metadata, []byte) (Payload, OnMessageEventFn, error)
+type clientState int
 
 const websocketTwitch = "wss://eventsub.wss.twitch.tv/ws"
 
@@ -40,6 +40,7 @@ var (
 	unmarshalError     = errors.New("failed to unmarshal message")
 	handlingError      = errors.New("handling error")
 	connectionNotAlive = errors.New("connection is lost")
+	notSupportedEvent  = errors.New("unsupported event")
 )
 
 var (
@@ -53,10 +54,19 @@ var (
 	log = logrus.New()
 )
 
+const (
+	stateInactive = iota
+	stateConnecting
+	stateConnected
+	stateDisconnected
+)
+
 type Metadata struct {
-	MessageID        string `json:"message_id"`
-	MessageType      string `json:"message_type"`
-	MessageTimestamp string `json:"message_timestamp"`
+	MessageID           string `json:"message_id"`
+	MessageType         string `json:"message_type"`
+	MessageTimestamp    string `json:"message_timestamp"`
+	SubscriptionType    string `json:"subscription_type"`
+	SubscriptionVersion string `json:"subscription_version"`
 }
 
 type Payload struct {
@@ -76,14 +86,15 @@ type Subscription struct {
 	Status    string      `json:"status"`
 	Type      string      `json:"type"`
 	Version   string      `json:"version"`
-	Cost      string      `json:"cost"`
+	Cost      int         `json:"cost"`
 	Condition interface{} `json:"condition"`
 	Transport transport   `json:"transport"`
 	CreatedAt string      `json:"created_at"`
 }
 
-type Event struct {
-	EventData interface{} `json:"event"`
+type Notification struct {
+	Subscription Subscription `json:"subscription"`
+	Event        interface{}  `json:"event"`
 }
 
 type Client struct {
@@ -98,6 +109,7 @@ type Client struct {
 	isConnected       atomic.Bool
 	isWelcomeReceived atomic.Bool
 	msgTracking       *ttlcache.Cache[string, string]
+	state             clientState
 	// connection related stuff
 	url                string
 	keepaliveTimeout   time.Duration
@@ -154,6 +166,7 @@ func (c *Client) Connect() error {
 		return AlreadyInUse
 	}
 
+	c.state = stateConnecting
 	c.waitGroup, c.waitGroupCtx = errgroup.WithContext(c.ctx)
 	c.waitGroup.Go(func() error {
 		return worker(c)
@@ -214,6 +227,8 @@ func (c *Client) cleanUp(err error) {
 		return
 	}
 
+	log.Debugf("Error: %s", err)
+
 	status := websocket.StatusNormalClosure
 	reason := ""
 
@@ -225,68 +240,72 @@ func (c *Client) cleanUp(err error) {
 	_ = c.conn.Close(status, reason)
 }
 
-func WithOnWelcome(fn OnMessageEventFn) Option {
-	return func(c *Client) {
-		c.onWelcomeMessage = fn
-	}
-}
-
-func WithOnKeepalive(fn OnMessageEventFn) Option {
-	return func(c *Client) {
-		c.onKeepaliveMessage = fn
-	}
-}
-
-func WithOnNotification(fn OnMessageEventFn) Option {
-	return func(c *Client) {
-		c.onNotificationMessage = fn
-	}
-}
-
-func WithOnRevocation(fn OnMessageEventFn) Option {
-	return func(c *Client) {
-		c.onRevocationMessage = fn
-	}
-}
-
-func WithOnReconnect(fn OnMessageEventFn) Option {
-	return func(c *Client) {
-		c.onReconnectMessage = fn
-	}
-}
-
 func worker(c *Client) error {
-	var err error
-	defer c.setDisconnected()
+	var (
+		err        error
+		shouldExit bool
+	)
 
 	for {
-		c.conn, _, err = websocket.Dial(c.ctx, c.url, nil)
+		switch c.state {
+		case stateConnecting:
+			err = connectingStateHandler(c)
 
-		if err != nil {
-			err = errors.Join(err, ConnectionFailed)
+			if err == nil {
+				c.state = stateConnected
+			} else {
+				shouldExit = true
+				c.state = stateDisconnected
+			}
+		case stateConnected:
+			c.setConnected()
+
+			if c.onConnect != nil {
+				c.onConnect()
+			}
+
+			shouldExit, err = connectedStateHandler(c)
+			c.state = stateDisconnected
+		case stateDisconnected:
+			c.cleanUp(err)
+			c.setDisconnected()
+
+			if c.onDisconnect != nil {
+				c.onDisconnect()
+			}
+
+			if !shouldExit {
+				c.state = stateConnecting
+			} else {
+				c.state = stateInactive
+			}
+		case stateInactive:
 			return err
-		}
-
-		c.setConnected()
-		var shouldExit bool
-		shouldExit, err = loop(c)
-
-		if shouldExit {
-			return err
+		default:
+			log.Errorf("unsupported state: %d", c.state)
 		}
 	}
 }
 
-func loop(c *Client) (bool, error) {
+func connectingStateHandler(c *Client) error {
 	var err error
-	defer c.cleanUp(err)
+	c.conn, _, err = websocket.Dial(c.ctx, c.url, nil)
 
+	if err != nil {
+		err = errors.Join(err, ConnectionFailed)
+		return err
+	}
+
+	return nil
+}
+
+func connectedStateHandler(c *Client) (bool, error) {
 	for {
 		select {
 		case <-c.workerStop:
 			return true, nil
 		default:
-			err = singleMessageHandler(c)
+			err := singleMessageHandler(c)
 
 			if err != nil {
 				if errors.Is(err, context.Canceled) {
@@ -381,25 +400,27 @@ func keepaliveMessageHandler(c *Client, metadata Metadata, data []byte) (Payload
 }
 
 func notificationMessageHandler(c *Client, metadata Metadata, data []byte) (Payload, OnMessageEventFn, error) {
-	log.Debug("Notification received")
-	e := Payload{
-		Payload: struct{}{},
-	}
-	err := unmarshalEnvelope(data, &e)
+	notification, err := unmarshalNotification(data)
 
 	if err == nil {
 		c.lastHeardTimestamp, err = time.Parse(time.RFC3339Nano, metadata.MessageTimestamp)
 	}
 
-	return Payload{}, c.onNotificationMessage, nil
+	payload := Payload{
+		Payload: notification,
+	}
+
+	log.Debugf("Notification: %+v", payload)
+
+	return payload, c.onNotificationMessage, err
 }
 
-func revocationMessageHandler(c *Client, metadata Metadata, _ []byte) (Payload, OnMessageEventFn, error) {
+func revocationMessageHandler(c *Client, _ Metadata, _ []byte) (Payload, OnMessageEventFn, error) {
 	log.Debug("Revocation received")
 	return Payload{}, c.onRevocationMessage, nil
 }
 
-func reconnectMessageHandler(c *Client, metadata Metadata, data []byte) (Payload, OnMessageEventFn, error) {
+func reconnectMessageHandler(c *Client, _ Metadata, data []byte) (Payload, OnMessageEventFn, error) {
 	s, err := unmarshalSession(data)
 	e := Payload{
 		Payload: s,
@@ -439,8 +460,43 @@ func unmarshalSession(data []byte) (Session, error) {
 	}
 
 	if err := unmarshalEnvelope(data, &payload); err != nil {
-		return payload.Payload.Session, err
+		return Session{}, err
 	}
 
 	return payload.Payload.Session, nil
+}
+
+func unmarshalNotification(data []byte) (Notification, error) {
+	log.Debugf("%s", data)
+	var msg json.RawMessage
+	payload := Payload{
+		Payload: &msg,
+	}
+
+	if err := unmarshalEnvelope(data, &payload); err != nil {
+		return Notification{}, err
+	}
+
+	notification := Notification{
+		Event: &msg,
+	}
+
+	if err := unmarshalEnvelope(msg, &notification); err != nil {
+		return Notification{}, err
+	}
+
+	if e, ok := eventSubTypes[notification.Subscription.Type]; ok {
+		event := e.MsgType
+
+		if err := unmarshalEnvelope(msg, event); err != nil {
+			return Notification{}, err
+		}
+
+		notification.Event = event
+	} else {
+		err := fmt.Errorf("unsupported event: %s", notification.Subscription.Type)
+		return Notification{}, errors.Join(notSupportedEvent, err)
+	}
+
+	return notification, nil
 }
