@@ -369,7 +369,6 @@ func singleMessageHandler(c *Client) error {
 
 /* Message Handlers */
 func welcomeMessageHandler(c *Client, metadata Metadata, data []byte) (Payload, OnMessageEventFn, error) {
-	log.Debugf("Welcome received: %s", data)
 	s, err := unmarshalSession(data)
 	e := Payload{
 		Payload: s,
@@ -485,18 +484,19 @@ func unmarshalNotification(data []byte) (Notification, error) {
 		return Notification{}, err
 	}
 
-	if e, ok := eventSubTypes[notification.Subscription.Type]; ok {
-		event := e.MsgType
+	e, ok := eventSubTypes[notification.Subscription.Type]
 
-		if err := unmarshalEnvelope(msg, event); err != nil {
-			return Notification{}, err
-		}
-
-		notification.Event = event
-	} else {
+	if !ok {
 		err := fmt.Errorf("unsupported event: %s", notification.Subscription.Type)
 		return Notification{}, errors.Join(notSupportedEvent, err)
 	}
 
+	event := e.MsgType
+
+	if err := unmarshalEnvelope(msg, event); err != nil {
+		return Notification{}, err
+	}
+
+	notification.Event = event
 	return notification, nil
 }
