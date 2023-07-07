@@ -53,3 +53,57 @@ type ChannelShoutoutReceiveEvent struct{}
 type UserAuthorizationGrantEvent struct{}
 type UserAuthorizationRevokeEvent struct{}
 type UserUpdateEvent struct{}
+
+// type ChannelUpdateCondition struct{}
+// type ChannelFollowCondition struct{}
+
+type ChannelSubscribeCondition struct{}
+type ChannelSubscriptionEndCondition struct{}
+type ChannelSubscriptionGiftCondition struct{}
+type ChannelSubscriptionMessageCondition struct{}
+type ChannelCheerCondition struct{}
+type ChannelRaidCondition struct{}
+type ChannelBanCondition struct{}
+type ChannelUnbanCondition struct{}
+type ChannelModeratorAddCondition struct{}
+type ChannelModeratorRemoveCondition struct{}
+type ChannelGuestStarSessionBeginCondition struct{}
+type ChannelGuestStarSessionEndCondition struct{}
+type ChannelGuestStarGuestUpdateCondition struct{}
+type ChannelGuestStarSlotUpdateCondition struct{}
+type ChannelGuestStarSettingsUpdateCondition struct{}
+type ChannelChannelPointsCustomRewardAddCondition struct{}
+type ChannelChannelPointsCustomRewardUpdateCondition struct{}
+type ChannelChannelPointsCustomRewardRemoveCondition struct{}
+type ChannelChannelPointsCustomRewardRedemptionAddCondition struct{}
+type ChannelChannelPointsCustomRewardRedemptionUpdateCondition struct{}
+type ChannelPollBeginCondition struct{}
+type ChannelPollProgressCondition struct{}
+type ChannelPollEndCondition struct{}
+type ChannelPredictionBeginCondition struct{}
+type ChannelPredictionProgressCondition struct{}
+type ChannelPredictionLockCondition struct{}
+type ChannelPredictionEndCondition struct{}
+type ChannelCharityCampaignDonateCondition struct{}
+type ChannelCharityCampaignStartCondition struct{}
+type ChannelCharityCampaignProgressCondition struct{}
+type ChannelCharityCampaignStopCondition struct{}
+type DropEntitlementGrantCondition struct{}
+type ExtensionBitsTransactionCreateCondition struct{}
+type ChannelGoalBeginCondition struct{}
+type ChannelGoalProgressCondition struct{}
+type ChannelGoalEndCondition struct{}
+type ChannelHypeTrainBeginCondition struct{}
+type ChannelHypeTrainProgressCondition struct{}
+type ChannelHypeTrainEndCondition struct{}
+type ChannelShieldModeBeginCondition struct{}
+type ChannelShieldModeEndCondition struct{}
+type ChannelShoutoutCreateCondition struct{}
+type ChannelShoutoutReceiveCondition struct{}
+
+// type StreamOnlineCondition struct{}
+// type StreamOfflineCondition struct{}
+
+type UserAuthorizationGrantCondition struct{}
+type UserAuthorizationRevokeCondition struct{}
+type UserUpdateCondition struct{}
