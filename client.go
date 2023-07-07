@@ -466,7 +466,6 @@ func unmarshalSession(data []byte) (Session, error) {
 }
 
 func unmarshalNotification(data []byte) (Notification, error) {
-	log.Debugf("%s", data)
 	var msg json.RawMessage
 	payload := Payload{
 		Payload: &msg,
@@ -476,8 +475,10 @@ func unmarshalNotification(data []byte) (Notification, error) {
 		return Notification{}, err
 	}
 
+	var condMsg json.RawMessage
 	notification := Notification{
-		Event: &msg,
+		Subscription: Subscription{Condition: &condMsg},
+		Event:        &msg,
 	}
 
 	if err := unmarshalEnvelope(msg, &notification); err != nil {
@@ -492,11 +493,16 @@ func unmarshalNotification(data []byte) (Notification, error) {
 	}
 
 	event := e.MsgType
-
 	if err := unmarshalEnvelope(msg, event); err != nil {
 		return Notification{}, err
 	}
 
+	condition := e.ConditionType
+	if err := unmarshalEnvelope(condMsg, condition); err != nil {
+		return Notification{}, err
+	}
+
 	notification.Event = event
+	notification.Subscription.Condition = condition
 	return notification, nil
 }
