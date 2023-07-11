@@ -58,6 +58,7 @@ const (
 	stateInactive = iota
 	stateConnecting
 	stateConnected
+	stateReconnecting
 	stateDisconnected
 )
 
@@ -105,11 +106,12 @@ type Client struct {
 	waitGroupCtx context.Context
 	workerStop   chan struct{}
 	// status variables
-	isActive          atomic.Bool
-	isConnected       atomic.Bool
-	isWelcomeReceived atomic.Bool
-	msgTracking       *ttlcache.Cache[string, string]
-	state             clientState
+	isActive            atomic.Bool
+	isConnected         atomic.Bool
+	isWelcomeReceived   atomic.Bool
+	isReconnectRequired atomic.Bool
+	msgTracking         *ttlcache.Cache[string, string]
+	state               clientState
 	// connection related stuff
 	url                string
 	keepaliveTimeout   time.Duration
@@ -367,6 +369,10 @@ func singleMessageHandler(c *Client) error {
 	return nil
 }
 
+func reconnectHandler(url string) error {
+	return nil
+}
+
 /* Message Handlers */
 func welcomeMessageHandler(c *Client, metadata Metadata, data []byte) (Payload, OnMessageEventFn, error) {
 	s, err := unmarshalSession(data)
@@ -424,6 +430,13 @@ func reconnectMessageHandler(c *Client, _ Metadata, data []byte) (Payload, OnMes
 	e := Payload{
 		Payload: s,
 	}
+
+	if err == nil {
+		c.isReconnectRequired.Store(true)
+		errgroup.WithContext(c.ctx)
+		reconnectHandler(s.ReconnectURL)
+	}
+
 	return e, c.onReconnectMessage, err
 }
 
