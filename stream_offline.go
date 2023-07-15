@@ -2,7 +2,7 @@ package twitchws
 
 // StreamOfflineEvent Contains the broadcaster user ID and broadcaster user name.
 //
-// **Authorization:** not required
+// **Authorization:** not required.
 type StreamOfflineEvent struct {
 	BroadcasterUserID    string `json:"broadcaster_user_id"`    // The broadcaster’s user ID.
 	BroadcasterUserLogin string `json:"broadcaster_user_login"` // The broadcaster’s user login.
