@@ -29,18 +29,18 @@ type clientState int
 const websocketTwitch = "wss://eventsub.wss.twitch.tv/ws"
 
 var (
-	AlreadyInUse     = errors.New("client already in use")      // WebSocket client is already in use.
-	NotConnected     = errors.New("client is not connected")    // WebSocket client is not connected
-	ConnectionFailed = errors.New("failed to setup connection") // Failed to set up WebSocket connection
+	ErrAlreadyInUse     = errors.New("client already in use")      // WebSocket client is already in use.
+	ErrNotConnected     = errors.New("client is not connected")    // WebSocket client is not connected
+	ErrConnectionFailed = errors.New("failed to setup connection") // Failed to set up WebSocket connection
 )
 
 var (
-	notSupported       = errors.New("message type is no supported")
-	websocketReadError = errors.New("read error")
-	unmarshalError     = errors.New("failed to unmarshal message")
-	handlingError      = errors.New("handling error")
-	connectionNotAlive = errors.New("connection is lost")
-	notSupportedEvent  = errors.New("unsupported event")
+	errNotSupported       = errors.New("message type is no supported")
+	errWebsocketReadError = errors.New("read error")
+	errUnmarshalError     = errors.New("failed to unmarshal message")
+	errHandlingError      = errors.New("handling error")
+	errConnectionNotAlive = errors.New("connection is lost")
+	errNotSupportedEvent  = errors.New("unsupported event")
 )
 
 var (
