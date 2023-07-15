@@ -1,0 +1,37 @@
+run:
+  timeout: 30s
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+linters-settings:
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+
+linters:
+  disable-all: true
+  enable:
+    # Default linters
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - stylecheck
+    - typecheck
+    - unused
+    # Extra linters:
+    # - gofmt
+    # - goimports
+    - gomnd
+    - godot
+    - gocritic
+    - revive
+    - bodyclose
+    - gosec
