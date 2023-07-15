@@ -381,9 +381,7 @@ func welcomeMessageHandler(c *Client, metadata Metadata, data []byte) (Payload, 
 	}
 
 	if err == nil {
-		// consider reported keepalive timeout to be 80% value to be used
-		// to avoid disconnection due to small drift in message delivery
-		c.keepaliveTimeout = time.Duration(s.KeepaliveTimeoutSeconds*100/80) * time.Second
+		c.keepaliveTimeout = keepaliveIntervalCalc(s.KeepaliveTimeoutSeconds)
 		c.isWelcomeReceived.Store(true)
 		c.lastHeardTimestamp, err = time.Parse(time.RFC3339Nano, metadata.MessageTimestamp)
 	}
@@ -518,4 +516,11 @@ func unmarshalNotification(data []byte) (Notification, error) {
 	notification.Event = event
 	notification.Subscription.Condition = condition
 	return notification, nil
+}
+
+func keepaliveIntervalCalc(keepaliveInterval int) time.Duration {
+	const keepalivePercent = 80
+	// consider reported keepalive timeout to be 80% value to be used
+	// to avoid disconnection due to small drift in message delivery
+	return time.Duration(keepaliveInterval*100/keepalivePercent) * time.Second
 }
