@@ -40,17 +40,16 @@ func main() {
 	}
 }
 
-func onWelcomeEvent(metadata twitchws.Metadata, payload twitchws.Payload) {
+func onWelcomeEvent(metadata *twitchws.Metadata, payload *twitchws.Payload) {
 	logrus.Debugf("Metadata: %+v", metadata)
 	logrus.Debugf("Payload: %+v", payload)
 }
 
-func onNotificationEvent(metadata twitchws.Metadata, payload twitchws.Payload) {
+func onNotificationEvent(_ *twitchws.Metadata, payload *twitchws.Payload) {
 	notification := payload.Payload.(twitchws.Notification)
 	logrus.Debugf("Notification: %+v", notification)
 
-	switch event := notification.Event.(type) {
-	case *twitchws.ChannelFollowEvent:
+	if event, ok := notification.Event.(*twitchws.ChannelFollowEvent); ok {
 		condition := notification.Subscription.Condition.(*twitchws.ChannelFollowCondition)
 		logrus.Debugf("Channel follow: %+v", event)
 		logrus.Debugf("Condition: %+v", condition)
