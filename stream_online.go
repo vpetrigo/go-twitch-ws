@@ -3,7 +3,7 @@ package twitchws
 // StreamOnlineEvent Contains the stream ID, broadcaster user ID,
 // broadcaster username, and the stream type.
 //
-// **Authorization:** not required
+// **Authorization:** not required.
 type StreamOnlineEvent struct {
 	ID                   string `json:"id"`                     // id of the steam.
 	BroadcasterUserID    string `json:"broadcaster_user_id"`    // The broadcaster’s user id.

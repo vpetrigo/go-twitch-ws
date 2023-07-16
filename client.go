@@ -29,18 +29,19 @@ type clientState int
 const websocketTwitch = "wss://eventsub.wss.twitch.tv/ws"
 
 var (
-	AlreadyInUse     = errors.New("client already in use")      // WebSocket client is already in use.
-	NotConnected     = errors.New("client is not connected")    // WebSocket client is not connected
-	ConnectionFailed = errors.New("failed to setup connection") // Failed to set up WebSocket connection
+	ErrAlreadyInUse     = errors.New("client already in use")      // WebSocket client is already in use.
+	ErrNotConnected     = errors.New("client is not connected")    // WebSocket client is not connected
+	ErrConnectionFailed = errors.New("failed to setup connection") // Failed to set up WebSocket connection
 )
 
 var (
-	notSupported       = errors.New("message type is no supported")
-	websocketReadError = errors.New("read error")
-	unmarshalError     = errors.New("failed to unmarshal message")
-	handlingError      = errors.New("handling error")
-	connectionNotAlive = errors.New("connection is lost")
-	notSupportedEvent  = errors.New("unsupported event")
+	errNotSupported           = errors.New("message type is no supported")
+	errWebsocketReadError     = errors.New("read error")
+	errUnmarshalError         = errors.New("failed to unmarshal message")
+	errHandlingError          = errors.New("handling error")
+	errConnectionNotAlive     = errors.New("connection is lost")
+	errNotSupportedEvent      = errors.New("unsupported event")
+	errReconnectTimeoutExpire = errors.New("reconnect awaiting timeout")
 )
 
 var (
@@ -58,8 +59,11 @@ const (
 	stateInactive = iota
 	stateConnecting
 	stateConnected
+	stateReconnecting
 	stateDisconnected
 )
+
+const defaultTTLTimeoutSec = 10
 
 type Metadata struct {
 	MessageID           string `json:"message_id"`
@@ -76,9 +80,9 @@ type Payload struct {
 type Session struct {
 	ID                      string `json:"id"`
 	Status                  string `json:"status"`
-	KeepaliveTimeoutSeconds int    `json:"keepalive_timeout_seconds"`
 	ReconnectURL            string `json:"reconnect_url"`
 	ConnectedAt             string `json:"connected_at"`
+	KeepaliveTimeoutSeconds int    `json:"keepalive_timeout_seconds"`
 }
 
 type Subscription struct {
@@ -86,10 +90,10 @@ type Subscription struct {
 	Status    string      `json:"status"`
 	Type      string      `json:"type"`
 	Version   string      `json:"version"`
-	Cost      int         `json:"cost"`
 	Condition interface{} `json:"condition"`
 	Transport transport   `json:"transport"`
 	CreatedAt string      `json:"created_at"`
+	Cost      int         `json:"cost"`
 }
 
 type Notification struct {
@@ -98,23 +102,32 @@ type Notification struct {
 }
 
 type Client struct {
-	conn         *websocket.Conn
-	ctx          context.Context
-	ctxCancel    context.CancelFunc
+	ctx         context.Context
+	ctxCancel   context.CancelFunc
+	opCtx       context.Context
+	opCtxCancel context.CancelFunc
+	// connection related stuff
+	conn          *websocket.Conn
+	reconnectConn *websocket.Conn
+	// client main routine related stuff
 	waitGroup    *errgroup.Group
 	waitGroupCtx context.Context
 	workerStop   chan struct{}
+
+	reconnectGroup    *errgroup.Group
+	reconnectGroupCtx context.Context
 	// status variables
-	isActive          atomic.Bool
-	isConnected       atomic.Bool
-	isWelcomeReceived atomic.Bool
-	msgTracking       *ttlcache.Cache[string, string]
-	state             clientState
+	isActive            atomic.Bool
+	isConnected         atomic.Bool
+	isWelcomeReceived   atomic.Bool
+	isReconnectRequired atomic.Bool
+	msgTracking         *ttlcache.Cache[string, string]
+	state               clientState
 	// connection related stuff
 	url                string
 	keepaliveTimeout   time.Duration
 	lastHeardTimestamp time.Time
-	// state event callbacks
+	// event callbacks
 	onConnect    OnEventFn
 	onDisconnect OnEventFn
 	// message event callbacks
@@ -130,26 +143,22 @@ func init() {
 	log.SetOutput(os.Stdout)
 }
 
-func NewClientDefault(opts ...func(*Client)) *Client {
+func NewClientDefault(opts ...Option) *Client {
 	return newClient(websocketTwitch, opts...)
 }
 
-func NewClient(url string, opts ...func(*Client)) *Client {
+func NewClient(url string, opts ...Option) *Client {
 	return newClient(url, opts...)
 }
 
-func newClient(url string, opts ...func(*Client)) *Client {
-	ctx, cancel := context.WithCancel(context.Background())
-
+func newClient(url string, opts ...Option) *Client {
 	c := &Client{
 		conn:             nil,
-		ctx:              ctx,
-		ctxCancel:        cancel,
 		keepaliveTimeout: time.Minute,
 		workerStop:       make(chan struct{}, 1),
 		url:              url,
 		msgTracking: ttlcache.New[string, string](
-			ttlcache.WithTTL[string, string](time.Second*10),
+			ttlcache.WithTTL[string, string](time.Second*defaultTTLTimeoutSec),
 			ttlcache.WithDisableTouchOnHit[string, string](),
 		),
 	}
@@ -163,11 +172,13 @@ func newClient(url string, opts ...func(*Client)) *Client {
 
 func (c *Client) Connect() error {
 	if !c.setActive() {
-		return AlreadyInUse
+		return ErrAlreadyInUse
 	}
 
 	c.state = stateConnecting
-	c.waitGroup, c.waitGroupCtx = errgroup.WithContext(c.ctx)
+	c.initMainContext()
+	c.initOperationContext()
+	c.waitGroup, c.waitGroupCtx = errgroup.WithContext(c.operationContext())
 	c.waitGroup.Go(func() error {
 		return worker(c)
 	})
@@ -181,7 +192,7 @@ func (c *Client) Wait() error {
 
 func (c *Client) Close() error {
 	if !c.setInactive() {
-		return NotConnected
+		return ErrNotConnected
 	}
 
 	c.workerStop <- struct{}{}
@@ -216,6 +227,22 @@ func (c *Client) getIsWelcomeReceived() bool {
 
 func (c *Client) isConnectionAlive() bool {
 	return time.Now().Before(c.lastHeardTimestamp.Add(c.keepaliveTimeout))
+}
+
+func (c *Client) initMainContext() {
+	c.ctx, c.ctxCancel = context.WithCancel(context.Background())
+}
+
+func (c *Client) initOperationContext() {
+	c.opCtx, c.opCtxCancel = context.WithCancel(c.mainContext())
+}
+
+func (c *Client) mainContext() context.Context {
+	return c.ctx
+}
+
+func (c *Client) operationContext() context.Context {
+	return c.opCtx
 }
 
 func (c *Client) cleanUp(err error) {
@@ -265,7 +292,20 @@ func worker(c *Client) error {
 			}
 
 			shouldExit, err = connectedStateHandler(c)
-			c.state = stateDisconnected
+			if c.isReconnectRequired.CompareAndSwap(true, false) {
+				c.state = stateReconnecting
+
+				if err != nil {
+					c.state = stateDisconnected
+				}
+			} else {
+				c.state = stateDisconnected
+			}
+		case stateReconnecting:
+			c.initOperationContext()
+			_ = c.conn.Close(websocket.StatusServiceRestart, "")
+			c.conn, c.reconnectConn = c.reconnectConn, nil
+			c.state = stateConnected
 		case stateDisconnected:
 			c.cleanUp(err)
 			c.setDisconnected()
@@ -289,10 +329,10 @@ func worker(c *Client) error {
 
 func connectingStateHandler(c *Client) error {
 	var err error
-	c.conn, _, err = websocket.Dial(c.ctx, c.url, nil)
+	c.conn, _, err = websocket.Dial(c.operationContext(), c.url, nil)
 
 	if err != nil {
-		err = errors.Join(err, ConnectionFailed)
+		err = errors.Join(err, ErrConnectionFailed)
 		return err
 	}
 
@@ -309,8 +349,15 @@ func connectedStateHandler(c *Client) (bool, error) {
 
 			if err != nil {
 				if errors.Is(err, context.Canceled) {
+					if c.isReconnectRequired.Load() {
+						err := c.reconnectGroup.Wait()
+						log.Debugf("Error: %s. Reconnect done", err)
+
+						return false, err
+					}
+
 					return true, err
-				} else if !errors.Is(err, notSupported) {
+				} else if !errors.Is(err, errNotSupported) {
 					log.Error(err)
 					return false, err
 				}
@@ -320,26 +367,25 @@ func connectedStateHandler(c *Client) (bool, error) {
 		c.msgTracking.DeleteExpired()
 		if c.getIsWelcomeReceived() && !c.isConnectionAlive() {
 			log.Debug("no keepalive/event messages - reconnect")
-			return false, connectionNotAlive
+			return false, errConnectionNotAlive
 		}
 	}
 }
 
 func singleMessageHandler(c *Client) error {
-	ctx, cancel := context.WithTimeout(c.ctx, c.keepaliveTimeout)
+	ctx, cancel := context.WithTimeout(c.operationContext(), c.keepaliveTimeout)
 	defer cancel()
 
-	var p Payload
 	msgType, data, err := c.conn.Read(ctx)
 
-	if err != nil || msgType == websocket.MessageBinary {
-		return errors.Join(err, websocketReadError)
+	if err != nil {
+		return errors.Join(err, errWebsocketReadError)
 	}
 
-	m, err := unmarshalMetadata(data)
+	m, err := getMessageMetadata(msgType, data)
 
 	if err != nil {
-		return errors.Join(err, unmarshalError)
+		return err
 	}
 
 	item := c.msgTracking.Get(m.MessageID)
@@ -351,11 +397,14 @@ func singleMessageHandler(c *Client) error {
 	c.msgTracking.Set(m.MessageID, m.MessageTimestamp, time.Second*c.keepaliveTimeout)
 
 	if h, ok := messageHandlers[m.MessageType]; ok {
-		var onEvent OnMessageEventFn
+		var (
+			onEvent OnMessageEventFn
+			p       Payload
+		)
 		p, onEvent, err = h(c, m, data)
 
 		if err != nil {
-			return errors.Join(err, handlingError)
+			return errors.Join(err, errHandlingError)
 		}
 
 		if onEvent != nil {
@@ -364,10 +413,97 @@ func singleMessageHandler(c *Client) error {
 	} else {
 		log.Debugf("unknown Twitch message type: %s", m.MessageType)
 	}
+
 	return nil
 }
 
-/* Message Handlers */
+func getMessageMetadata(msgType websocket.MessageType, data []byte) (Metadata, error) {
+	if msgType == websocket.MessageBinary {
+		return Metadata{}, errWebsocketReadError
+	}
+
+	m, err := unmarshalMetadata(data)
+
+	if err != nil {
+		return Metadata{}, errors.Join(err, errUnmarshalError)
+	}
+
+	return m, nil
+}
+
+func reconnectNewConnection(c *Client, url string) error {
+	var err error
+	c.url = url
+	c.reconnectConn, _, err = websocket.Dial(c.mainContext(), url, nil)
+
+	return err
+}
+
+func reconnectWaitWelcome(c *Client) error {
+	var (
+		err             error
+		welcomeReceived bool
+	)
+	end := time.Now().Add(time.Minute)
+
+	for {
+		if end.After(time.Now()) {
+			return errReconnectTimeoutExpire
+		}
+
+		err = func() error {
+			rCtx, rCancel := context.WithTimeout(c.mainContext(), time.Minute)
+			defer rCancel()
+
+			msgType, data, err := c.reconnectConn.Read(rCtx)
+
+			if err != nil {
+				return err
+			}
+
+			m, err := getMessageMetadata(msgType, data)
+
+			if err != nil {
+				return err
+			}
+
+			if m.MessageType == "session_welcome" {
+				_, _, err = welcomeMessageHandler(c, m, data)
+
+				if err != nil {
+					return err
+				}
+
+				welcomeReceived = true
+			}
+
+			return nil
+		}()
+
+		if err != nil {
+			return err
+		}
+
+		if welcomeReceived {
+			// cancel operation context to allow connections swap
+			c.opCtxCancel()
+			break
+		}
+	}
+
+	return nil
+}
+
+func reconnectHandler(c *Client, url string) error {
+	err := reconnectNewConnection(c, url)
+
+	if err != nil {
+		return err
+	}
+
+	return reconnectWaitWelcome(c)
+}
+
 func welcomeMessageHandler(c *Client, metadata Metadata, data []byte) (Payload, OnMessageEventFn, error) {
 	s, err := unmarshalSession(data)
 	e := Payload{
@@ -375,9 +511,7 @@ func welcomeMessageHandler(c *Client, metadata Metadata, data []byte) (Payload, 
 	}
 
 	if err == nil {
-		// consider reported keepalive timeout to be 80% value to be used
-		// to avoid disconnection due to small drift in message delivery
-		c.keepaliveTimeout = time.Duration(s.KeepaliveTimeoutSeconds*100/80) * time.Second
+		c.keepaliveTimeout = keepaliveIntervalCalc(s.KeepaliveTimeoutSeconds)
 		c.isWelcomeReceived.Store(true)
 		c.lastHeardTimestamp, err = time.Parse(time.RFC3339Nano, metadata.MessageTimestamp)
 	}
@@ -424,6 +558,15 @@ func reconnectMessageHandler(c *Client, _ Metadata, data []byte) (Payload, OnMes
 	e := Payload{
 		Payload: s,
 	}
+
+	if err == nil {
+		c.isReconnectRequired.Store(true)
+		c.reconnectGroup, c.reconnectGroupCtx = errgroup.WithContext(c.ctx)
+		c.reconnectGroup.Go(func() error {
+			return reconnectHandler(c, s.ReconnectURL)
+		})
+	}
+
 	return e, c.onReconnectMessage, err
 }
 
@@ -489,7 +632,7 @@ func unmarshalNotification(data []byte) (Notification, error) {
 
 	if !ok {
 		err := fmt.Errorf("unsupported event: %s", notification.Subscription.Type)
-		return Notification{}, errors.Join(notSupportedEvent, err)
+		return Notification{}, errors.Join(errNotSupportedEvent, err)
 	}
 
 	event := e.MsgType
@@ -505,4 +648,11 @@ func unmarshalNotification(data []byte) (Notification, error) {
 	notification.Event = event
 	notification.Subscription.Condition = condition
 	return notification, nil
+}
+
+func keepaliveIntervalCalc(keepaliveInterval int) time.Duration {
+	const keepalivePercent = 80
+	// consider reported keepalive timeout to be 80% value to be used
+	// to avoid disconnection due to small drift in message delivery
+	return time.Duration(keepaliveInterval*100/keepalivePercent) * time.Second
 }

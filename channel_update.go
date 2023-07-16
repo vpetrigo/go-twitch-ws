@@ -8,7 +8,7 @@ package twitchws
 // when a broadcaster updates the category, title, content classification
 // labels, or broadcast language for their channel.
 //
-// **Authorization:** not required
+// **Authorization:** not required.
 type ChannelUpdateEvent struct {
 	BroadcasterUserID           string   `json:"broadcaster_user_id"`           // The broadcaster’s user ID.
 	BroadcasterUserLogin        string   `json:"broadcaster_user_login"`        // The broadcaster’s user login.
