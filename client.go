@@ -21,9 +21,9 @@ type transport struct {
 }
 
 type OnEventFn func()
-type OnMessageEventFn func(Metadata, Payload)
+type OnMessageEventFn func(*Metadata, *Payload)
 
-type websocketMessageFn func(*Client, Metadata, []byte) (Payload, OnMessageEventFn, error)
+type websocketMessageFn func(*Client, *Metadata, []byte) (*Payload, OnMessageEventFn, error)
 type clientState int
 
 const websocketTwitch = "wss://eventsub.wss.twitch.tv/ws"
@@ -399,7 +399,7 @@ func singleMessageHandler(c *Client) error {
 	if h, ok := messageHandlers[m.MessageType]; ok {
 		var (
 			onEvent OnMessageEventFn
-			p       Payload
+			p       *Payload
 		)
 		p, onEvent, err = h(c, m, data)
 
@@ -417,15 +417,15 @@ func singleMessageHandler(c *Client) error {
 	return nil
 }
 
-func getMessageMetadata(msgType websocket.MessageType, data []byte) (Metadata, error) {
+func getMessageMetadata(msgType websocket.MessageType, data []byte) (*Metadata, error) {
 	if msgType == websocket.MessageBinary {
-		return Metadata{}, errWebsocketReadError
+		return nil, errWebsocketReadError
 	}
 
 	m, err := unmarshalMetadata(data)
 
 	if err != nil {
-		return Metadata{}, errors.Join(err, errUnmarshalError)
+		return nil, errors.Join(err, errUnmarshalError)
 	}
 
 	return m, nil
@@ -504,7 +504,7 @@ func reconnectHandler(c *Client, url string) error {
 	return reconnectWaitWelcome(c)
 }
 
-func welcomeMessageHandler(c *Client, metadata Metadata, data []byte) (Payload, OnMessageEventFn, error) {
+func welcomeMessageHandler(c *Client, metadata *Metadata, data []byte) (*Payload, OnMessageEventFn, error) {
 	s, err := unmarshalSession(data)
 	e := Payload{
 		Payload: s,
@@ -516,10 +516,10 @@ func welcomeMessageHandler(c *Client, metadata Metadata, data []byte) (Payload, 
 		c.lastHeardTimestamp, err = time.Parse(time.RFC3339Nano, metadata.MessageTimestamp)
 	}
 
-	return e, c.onWelcomeMessage, err
+	return &e, c.onWelcomeMessage, err
 }
 
-func keepaliveMessageHandler(c *Client, metadata Metadata, data []byte) (Payload, OnMessageEventFn, error) {
+func keepaliveMessageHandler(c *Client, metadata *Metadata, data []byte) (*Payload, OnMessageEventFn, error) {
 	e := Payload{
 		Payload: struct{}{},
 	}
@@ -529,10 +529,10 @@ func keepaliveMessageHandler(c *Client, metadata Metadata, data []byte) (Payload
 		c.lastHeardTimestamp, err = time.Parse(time.RFC3339Nano, metadata.MessageTimestamp)
 	}
 
-	return e, c.onKeepaliveMessage, err
+	return &e, c.onKeepaliveMessage, err
 }
 
-func notificationMessageHandler(c *Client, metadata Metadata, data []byte) (Payload, OnMessageEventFn, error) {
+func notificationMessageHandler(c *Client, metadata *Metadata, data []byte) (*Payload, OnMessageEventFn, error) {
 	notification, err := unmarshalNotification(data)
 
 	if err == nil {
@@ -545,15 +545,15 @@ func notificationMessageHandler(c *Client, metadata Metadata, data []byte) (Payl
 
 	log.Debugf("Notification: %+v", payload)
 
-	return payload, c.onNotificationMessage, err
+	return &payload, c.onNotificationMessage, err
 }
 
-func revocationMessageHandler(c *Client, _ Metadata, _ []byte) (Payload, OnMessageEventFn, error) {
+func revocationMessageHandler(c *Client, _ *Metadata, _ []byte) (*Payload, OnMessageEventFn, error) {
 	log.Debug("Revocation received")
-	return Payload{}, c.onRevocationMessage, nil
+	return nil, c.onRevocationMessage, nil
 }
 
-func reconnectMessageHandler(c *Client, _ Metadata, data []byte) (Payload, OnMessageEventFn, error) {
+func reconnectMessageHandler(c *Client, _ *Metadata, data []byte) (*Payload, OnMessageEventFn, error) {
 	s, err := unmarshalSession(data)
 	e := Payload{
 		Payload: s,
@@ -567,10 +567,10 @@ func reconnectMessageHandler(c *Client, _ Metadata, data []byte) (Payload, OnMes
 		})
 	}
 
-	return e, c.onReconnectMessage, err
+	return &e, c.onReconnectMessage, err
 }
 
-func unmarshalMetadata(data []byte) (Metadata, error) {
+func unmarshalMetadata(data []byte) (*Metadata, error) {
 	var m struct {
 		Metadata `json:"metadata"`
 	}
@@ -578,10 +578,10 @@ func unmarshalMetadata(data []byte) (Metadata, error) {
 	err := json.Unmarshal(data, &m)
 
 	if err != nil {
-		return Metadata{}, err
+		return nil, err
 	}
 
-	return m.Metadata, nil
+	return &m.Metadata, nil
 }
 
 func unmarshalEnvelope(data []byte, e any) error {
