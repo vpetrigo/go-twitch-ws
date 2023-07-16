@@ -4,7 +4,7 @@
 - [x] Keepalive Message
 - [x] Notification Message
 - [ ] Revocation Message
-- [ ] Reconnect Message
+- [x] Reconnect Message
 
 # EventSub Notifications
 
