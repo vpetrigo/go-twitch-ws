@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"go/format"
 	"log"
-	"net/http"
 	"os"
 	"strings"
 	"text/template"
 
 	"github.com/sirupsen/logrus"
 	"github.com/vpetrigo/go-twitch-ws/internal/pkg/crawler"
+	"github.com/vpetrigo/go-twitch-ws/internal/pkg/refdoc"
 	"golang.org/x/net/html"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -67,7 +67,7 @@ const (
 
 func main() {
 	logrus.SetLevel(logrus.InfoLevel)
-	body, err := getReferenceDocBody()
+	body, err := refdoc.GetReferenceDocPage(eventsubTypesRefURL)
 
 	if err != nil {
 		log.Fatal(err)
@@ -78,25 +78,6 @@ func main() {
 	if err = generateFile(types); err != nil {
 		logrus.Fatal(err)
 	}
-}
-
-func getReferenceDocBody() (*html.Node, error) {
-	resp, err := http.Get(eventsubTypesRefURL)
-
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	body, err := html.Parse(resp.Body)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return body, nil
 }
 
 func getSubscriptionTypes(body *html.Node) []subscriptionType {
