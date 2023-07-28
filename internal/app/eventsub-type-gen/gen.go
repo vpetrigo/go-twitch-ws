@@ -368,6 +368,7 @@ func getOutputLines(eventsubTypes []subscriptionType) []outputLine {
 }
 
 func generateFile(types []subscriptionType) error {
+	const eventsubTypesFilePermissions = 0o644
 	outputLines := getOutputLines(types)
 	logrus.Debugf("Type size: %d", len(types))
 	fileTemplate := template.Must(template.New("eventsub").Parse(eventsubTypesFileTemplate))
@@ -376,5 +377,5 @@ func generateFile(types []subscriptionType) error {
 	_ = fileTemplate.Execute(&buf, outputLines)
 	b, _ := format.Source(buf.Bytes())
 
-	return os.WriteFile(eventsubTypesFile, b, 0o644)
+	return os.WriteFile(eventsubTypesFile, b, eventsubTypesFilePermissions)
 }
