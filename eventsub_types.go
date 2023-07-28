@@ -8,7 +8,7 @@ type eventSubScope struct {
 
 var (
 	eventSubTypes = map[string]eventSubScope{
-		"channel.update":                                         {Version: "beta", MsgType: &ChannelUpdateEvent{}, ConditionType: &ChannelUpdateCondition{}},
+		"channel.update":                                         {Version: "2", MsgType: &ChannelUpdateEvent{}, ConditionType: &ChannelUpdateCondition{}},
 		"channel.follow":                                         {Version: "2", MsgType: &ChannelFollowEvent{}, ConditionType: &ChannelFollowCondition{}},
 		"channel.subscribe":                                      {Version: "1", MsgType: &ChannelSubscribeEvent{}, ConditionType: &ChannelSubscribeCondition{}},
 		"channel.subscription.end":                               {Version: "1", MsgType: &ChannelSubscriptionEndEvent{}, ConditionType: &ChannelSubscriptionEndCondition{}},
