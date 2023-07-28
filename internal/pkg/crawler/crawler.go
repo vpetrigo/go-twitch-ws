@@ -29,6 +29,9 @@ func (cs crawlerStack[T]) len() int {
 	return len(cs)
 }
 
+// GenericCrawler pre-order traverse HTML crawler.
+//
+// Calls passed `crawl` handler every time a new HTML ElementNode is found.
 func GenericCrawler(node *html.Node, crawl Crawler) {
 	if node == nil {
 		return
