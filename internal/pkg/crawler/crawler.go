@@ -68,6 +68,10 @@ func IsElementNode(node *html.Node) bool {
 	return node.Type == html.ElementNode
 }
 
+func IsTextNode(node *html.Node) bool {
+	return node.Type == html.TextNode
+}
+
 func skipToElementNode(node *html.Node) *html.Node {
 	for e := node; e != nil; e = e.NextSibling {
 		if IsElementNode(e) {
