@@ -9,8 +9,9 @@ import (
 )
 
 type eventsubEvent struct {
-	Name   string
-	Fields []eventsubEventField
+	Name               string
+	SpaceSeparatedName string
+	Fields             []eventsubEventField
 }
 
 type eventsubEventField struct {
@@ -18,6 +19,13 @@ type eventsubEventField struct {
 	Name        string
 	Type        string
 	Description string
+}
+
+func newEventsubEvent(name string) eventsubEvent {
+	return eventsubEvent{
+		Name:               strings.ReplaceAll(name, " ", ""),
+		SpaceSeparatedName: name,
+	}
 }
 
 func newEventsubEventField(name, ty, description string) eventsubEventField {
@@ -39,7 +47,7 @@ func newEventsubEventField(name, ty, description string) eventsubEventField {
 func (e *eventsubEvent) String() string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("EventSub Event {%s}\n", e.Name))
+	sb.WriteString(fmt.Sprintf("EventSub Event {%s}\n", e.SpaceSeparatedName))
 
 	for i, v := range e.Fields {
 		sb.WriteString(fmt.Sprintf("  #%2d: [%s] [%s]\n", i+1, v.Name, v.Type))
@@ -52,10 +60,6 @@ func (e *eventsubEvent) stripDescriptionToComment() {
 	for i := range e.Fields {
 		e.Fields[i].Description = strings.Split(e.Fields[i].Description, ".")[0] + "."
 	}
-}
-
-func (e *eventsubEvent) updateStructName() {
-	e.Name = strings.ReplaceAll(e.Name, " ", "")
 }
 
 func (e *eventsubEvent) updateTypeToGoAcceptable() {

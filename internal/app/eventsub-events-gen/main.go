@@ -119,7 +119,7 @@ func (e *eventsubEventCrawler) checkEventHeader(node *html.Node) {
 		headerText := strings.TrimSuffix(node.FirstChild.Data, "\n")
 
 		if strings.HasSuffix(headerText, "Event") {
-			e.tempEvent.Name = headerText
+			e.tempEvent = newEventsubEvent(headerText)
 			e.state = eventTableSearch
 			logrus.Tracef("Found: %s", node.FirstChild.Data)
 		} else {
@@ -314,11 +314,10 @@ type {{.Name}}Condition struct {}
 	t := template.Must(template.New("eventsubFileContent").Parse(eventsubFileContentTemplate))
 
 	for i, e := range events {
-		fileName := getFileName(e.Name)
+		fileName := getFileName(e.SpaceSeparatedName)
 
 		logrus.Tracef("file #%2d: %s", i+1, fileName)
 		e.stripDescriptionToComment()
-		e.updateStructName()
 		e.updateTypeToGoAcceptable()
 
 		var buf bytes.Buffer
