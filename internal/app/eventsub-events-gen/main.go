@@ -64,7 +64,6 @@ func main() {
 }
 
 func getEvents(resp *html.Node) []eventsubEvent {
-	// TODO: Add support for events with Field/Type/Description table
 	const expectedEventNumber = 50
 	events := &eventsubEventCrawler{
 		events: make([]eventsubEvent, 0, expectedEventNumber),
@@ -148,34 +147,9 @@ func (e *eventsubEventCrawler) verifyEventTable(node *html.Node) {
 			return
 		}
 
-		validHeading := []string{
-			"Name",
-			"Type",
-			"Description",
-		}
-		const numberOfHeaderColumns = 4
-		out := make([]string, 0, numberOfHeaderColumns)
-
-		for th := tr.FirstChild; th != nil; th = th.NextSibling {
-			if !crawler.IsElementNode(th) {
-				continue
-			}
-
-			out = append(out, th.FirstChild.Data)
-		}
-
-		logrus.Tracef("expected: %v, actual: %v", validHeading, out)
-
-		if len(validHeading) != len(out) {
+		if !(standardEventTableValidator(tr) || charityEventTableValidator(tr)) {
 			e.state = eventHeaderSearch
 			return
-		}
-
-		for i, v := range validHeading {
-			if v != out[i] {
-				e.state = eventHeaderSearch
-				return
-			}
 		}
 
 		e.state = eventTableBodySearch
@@ -285,4 +259,51 @@ func processTextNode(node *html.Node, fields *eventsubEventField, position proce
 	}
 
 	return position
+}
+
+func standardEventTableValidator(tableHeaderNode *html.Node) bool {
+	validHeading := []string{
+		"Name",
+		"Type",
+		"Description",
+	}
+
+	return validateTableHeading(tableHeaderNode, validHeading)
+}
+
+func charityEventTableValidator(tableHeaderNode *html.Node) bool {
+	validHeading := []string{
+		"Field",
+		"Type",
+		"Description",
+	}
+
+	return validateTableHeading(tableHeaderNode, validHeading)
+}
+
+func validateTableHeading(tr *html.Node, validHeading []string) bool {
+	validationSliceLen := len(validHeading)
+	out := make([]string, 0, validationSliceLen)
+
+	for th := tr.FirstChild; th != nil; th = th.NextSibling {
+		if !crawler.IsElementNode(th) {
+			continue
+		}
+
+		out = append(out, th.FirstChild.Data)
+	}
+
+	logrus.Tracef("expected: %v, actual: %v", validHeading, out)
+
+	if validationSliceLen != len(out) {
+		return false
+	}
+
+	for i, v := range validHeading {
+		if v != out[i] {
+			return false
+		}
+	}
+
+	return true
 }
