@@ -50,7 +50,7 @@ func onNotificationEvent(_ *twitchws.Metadata, payload *twitchws.Payload) {
 	logrus.Debugf("Notification: %+v", notification)
 
 	if event, ok := notification.Event.(*twitchws.ChannelFollowEvent); ok {
-		condition := notification.Subscription.Condition.(*twitchws.ChannelFollowCondition)
+		condition := notification.Subscription.Condition.(*twitchws.ChannelFollowEventCondition)
 		logrus.Debugf("Channel follow: %+v", event)
 		logrus.Debugf("Condition: %+v", condition)
 	}
