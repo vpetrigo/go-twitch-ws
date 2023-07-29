@@ -1,18 +1,25 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"go/format"
+	"os"
 	"strings"
+	"text/template"
 
 	"github.com/sirupsen/logrus"
 	"github.com/vpetrigo/go-twitch-ws/internal/pkg/crawler"
 	"github.com/vpetrigo/go-twitch-ws/internal/pkg/refdoc"
 	"golang.org/x/net/html"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 const eventsubEventsRefURL = "https://dev.twitch.tv/docs/eventsub/eventsub-reference/"
 
 type eventsubEventField struct {
+	FieldName   string
 	Name        string
 	Type        string
 	Description string
@@ -72,6 +79,8 @@ func main() {
 		logrus.Printf("Event #%d\n", i+1)
 		logrus.Printf("%+v\n", v)
 	}
+
+	_ = generateEventsubFiles(events)
 }
 
 func (ev eventsubEvent) String() string {
@@ -298,4 +307,95 @@ func validateTableHeading(tr *html.Node, validHeading []string) bool {
 	}
 
 	return true
+}
+
+func generateEventsubFiles(events []eventsubEvent) error {
+	const defaultFileAccess = 0o644
+	const eventsubFileContentTemplate = `package twitchws
+
+type {{.Name}} struct {
+{{range .Fields}}{{.FieldName}} {{.Type}} ` + "`json:\"{{.Name}}\"` // {{.Description}}\n" + `{{end}}}
+
+type {{.Name}}Condition struct {}
+`
+
+	t := template.Must(template.New("eventsubFileContent").Parse(eventsubFileContentTemplate))
+
+	for i, e := range events {
+		splittedEventName := strings.Split(e.Name, " ")
+		fileName := getFileName(splittedEventName)
+
+		logrus.Tracef("file #%2d: %s", i+1, fileName)
+		e = stripDescriptionToComment(e)
+		e = updateStructName(e)
+		e = updateTypeToGoAcceptable(e)
+
+		var buf bytes.Buffer
+		err := t.Execute(&buf, e)
+
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		b, _ := format.Source(buf.Bytes())
+		_, err = os.Stat(fileName)
+
+		if os.IsNotExist(err) {
+			_ = os.WriteFile(fileName, b, defaultFileAccess)
+		}
+	}
+
+	return nil
+}
+
+func getFileName(splittedEventName []string) string {
+	l := len(splittedEventName)
+	loweredEventName := make([]string, 0, l-1)
+
+	for i := 0; i < l-1; i++ {
+		loweredEventName = append(loweredEventName, strings.ToLower(splittedEventName[i]))
+	}
+
+	return fmt.Sprintf("%s.go", strings.Join(loweredEventName, "_"))
+}
+
+func stripDescriptionToComment(e eventsubEvent) eventsubEvent {
+	for i := range e.Fields {
+		e.Fields[i].Description = strings.Split(e.Fields[i].Description, ".")[0] + "."
+	}
+
+	return e
+}
+
+func updateStructName(e eventsubEvent) eventsubEvent {
+	e.Name = strings.ReplaceAll(e.Name, " ", "")
+
+	return e
+}
+
+func updateTypeToGoAcceptable(e eventsubEvent) eventsubEvent {
+	for i := range e.Fields {
+		titleCase := cases.Title(language.AmericanEnglish)
+		splittedName := strings.Split(e.Fields[i].Name, "_")
+
+		for j := range splittedName {
+			splittedName[j] = titleCase.String(splittedName[j])
+		}
+
+		e.Fields[i].FieldName = strings.Join(splittedName, "")
+
+		switch e.Fields[i].Type {
+		case "integer":
+			e.Fields[i].Type = "int"
+		case "boolean":
+			e.Fields[i].Type = "bool"
+		case "string":
+		case "string[]":
+			e.Fields[i].Type = "[]string"
+		default:
+			e.Fields[i].Type = "interface{}"
+		}
+	}
+
+	return e
 }
