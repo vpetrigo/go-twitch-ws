@@ -51,8 +51,14 @@ const (
 	done
 )
 
-func main() {
+func init() {
+	logrus.SetFormatter(&logrus.TextFormatter{
+		ForceColors: true,
+	})
 	logrus.SetLevel(logrus.DebugLevel)
+}
+
+func main() {
 	resp, err := refdoc.GetReferenceDocPage(eventsubEventsRefURL)
 
 	if err != nil {
@@ -61,6 +67,23 @@ func main() {
 
 	events := getEvents(resp)
 	logrus.Debugf("Events size: %d", len(events))
+
+	for i, v := range events {
+		logrus.Printf("Event #%d\n", i+1)
+		logrus.Printf("%+v\n", v)
+	}
+}
+
+func (ev eventsubEvent) String() string {
+	var sb strings.Builder
+
+	sb.WriteString(fmt.Sprintf("EventSub Event {%s}\n", ev.Name))
+
+	for i, v := range ev.Fields {
+		sb.WriteString(fmt.Sprintf("  #%2d: [%s] [%s]\n", i+1, v.Name, v.Type))
+	}
+
+	return sb.String()
 }
 
 func getEvents(resp *html.Node) []eventsubEvent {
@@ -179,11 +202,7 @@ func (e *eventsubEventCrawler) parseEventTable(node *html.Node) {
 					logrus.Fatalf("Invalid inner tag for %+v", td)
 				}
 
-				if crawler.IsElementNode(innerTag) {
-					position = processElementNode(innerTag, &fields, position)
-				} else {
-					position = processTextNode(innerTag, &fields, position)
-				}
+				position = getElementValue(innerTag, &fields, position)
 
 				if position == done {
 					logrus.Tracef("Resulted field: %#v", fields)
@@ -195,67 +214,40 @@ func (e *eventsubEventCrawler) parseEventTable(node *html.Node) {
 	}
 
 	e.events = append(e.events, e.tempEvent)
+	e.tempEvent.Fields = nil
 	e.state = eventHeaderSearch
 }
 
-func processElementNode(node *html.Node, fields *eventsubEventField, position processPosition) processPosition {
-	switch position {
-	case namePosition:
-		tagValue := strings.TrimSuffix(node.Data, "\n")
+func getElementValue(node *html.Node, fields *eventsubEventField, position processPosition) processPosition {
+	var sb strings.Builder
+	for tag := node; tag != nil; tag = tag.NextSibling {
+		var value string
 
-		if tagValue == "code" {
-			fields.Name = node.FirstChild.Data
+		if crawler.IsElementNode(tag) {
+			if tag.Data != "br" {
+				value = strings.TrimSuffix(tag.FirstChild.Data, "\n")
+			} else {
+				value = "\n"
+			}
+		} else if crawler.IsTextNode(tag) {
+			value = strings.TrimSuffix(tag.Data, "\n")
 		}
 
-		position = typePosition
-	case typePosition:
-		tagValue := strings.TrimSuffix(node.Data, "\n")
-		if tagValue == "a" {
-			fields.Type = node.FirstChild.Data
-		}
-
-		position = descriptionPosition
-	default:
-		panic(fmt.Errorf("unexpected position: %d", position))
+		sb.WriteString(value)
 	}
 
-	return position
-}
+	value := strings.ReplaceAll(sb.String(), "\u00a0", "")
 
-func processTextNode(node *html.Node, fields *eventsubEventField, position processPosition) processPosition {
 	switch position {
+	case namePosition:
+		fields.Name = value
+		return typePosition
 	case typePosition:
-		var sb strings.Builder
-
-		for tag := node; tag != nil; tag = tag.NextSibling {
-			if crawler.IsElementNode(tag) {
-				sb.WriteString(tag.FirstChild.Data)
-			} else if crawler.IsTextNode(tag) {
-				sb.WriteString(tag.Data)
-			}
-		}
-
-		fields.Type = strings.ReplaceAll(sb.String(), "\u00a0", "")
-		position = descriptionPosition
+		fields.Type = strings.ToLower(value)
+		return descriptionPosition
 	case descriptionPosition:
-		var sb strings.Builder
-
-		for tag := node; tag != nil; tag = tag.NextSibling {
-			if crawler.IsElementNode(tag) {
-				if tag.Data != "br" {
-					sb.WriteString(tag.FirstChild.Data)
-				} else {
-					sb.WriteString("\n")
-				}
-			} else if crawler.IsTextNode(tag) {
-				sb.WriteString(tag.Data)
-			}
-		}
-
-		fields.Description = sb.String()
-		position = done
-	default:
-		panic(fmt.Errorf("unexpected position: %d", position))
+		fields.Description = value
+		return done
 	}
 
 	return position
