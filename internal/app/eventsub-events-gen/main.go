@@ -196,20 +196,21 @@ func (e *eventsubEventCrawler) parseEventTable(node *html.Node) {
 					logrus.Fatalf("Invalid inner tag for %+v", td)
 				}
 
-				nextPosition, retValue, relation := getElementValue(innerTag, position)
+				value := getElementValue(innerTag)
+				relation := getFieldTypeRelation(value)
+				value = replaceHTMLSpaces(value)
 
 				switch position {
 				case namePosition:
-					fieldName = retValue
+					fieldName = value
 					fieldRelation = relation
-					logrus.Debugf("Relation: [%s] %s %d", e.tempEvent.SpaceSeparatedName, fieldName, relation)
 				case typePosition:
-					fieldTy = retValue
+					fieldTy = strings.ToLower(value)
 				case descriptionPosition:
-					fieldDescription = retValue
+					fieldDescription = value
 				}
 
-				position = nextPosition
+				position = getNextPosition(position)
 
 				if position == done {
 					field := newEventsubEventField(fieldName, fieldTy, fieldDescription)
@@ -232,14 +233,8 @@ func (e *eventsubEventCrawler) parseEventTable(node *html.Node) {
 	e.state = eventHeaderSearch
 }
 
-// TODO: split this function into multiple based on required feature:
-// - extract column value
-// - determine main/inner field
-// - remove HTML &nbsp; characters
-// getElementValue extract field element value and specify which position should be updated next.
-func getElementValue(node *html.Node, position processPosition) (processPosition, string, fieldTypeRelation) {
+func getElementValue(node *html.Node) string {
 	var sb strings.Builder
-	fieldRelation := mainField
 
 	for tag := node; tag != nil; tag = tag.NextSibling {
 		var value string
@@ -257,26 +252,34 @@ func getElementValue(node *html.Node, position processPosition) (processPosition
 		sb.WriteString(value)
 	}
 
-	if strings.Contains(sb.String(), "\u00a0") {
+	return sb.String()
+}
+
+func getFieldTypeRelation(value string) fieldTypeRelation {
+	fieldRelation := mainField
+
+	if strings.Contains(value, "\u00a0") {
 		fieldRelation = innerField
 	}
 
-	value := strings.ReplaceAll(sb.String(), "\u00a0", "")
-	var ret string
+	return fieldRelation
+}
 
+func replaceHTMLSpaces(value string) string {
+	return strings.ReplaceAll(value, "\u00a0", "")
+}
+
+func getNextPosition(position processPosition) processPosition {
 	switch position {
 	case namePosition:
-		ret = value
 		position = typePosition
 	case typePosition:
-		ret = strings.ToLower(value)
 		position = descriptionPosition
 	case descriptionPosition:
-		ret = value
 		position = done
 	}
 
-	return position, ret, fieldRelation
+	return position
 }
 
 func standardEventTableValidator(tableHeaderNode *html.Node) bool {
@@ -355,10 +358,6 @@ type {{.Name}}Condition struct {}
 
 		if err != nil {
 			logrus.Fatal(err)
-		}
-
-		if strings.HasPrefix(e.Name, "Charity") {
-			logrus.Debugf("%s", buf.String())
 		}
 
 		b, _ := format.Source(buf.Bytes())
