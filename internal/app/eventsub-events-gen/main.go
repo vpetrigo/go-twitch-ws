@@ -43,6 +43,13 @@ const (
 	done
 )
 
+type fieldTypeRelation int
+
+const (
+	mainField fieldTypeRelation = iota
+	innerField
+)
+
 func init() {
 	logrus.SetFormatter(&logrus.TextFormatter{
 		ForceColors: true,
@@ -170,8 +177,9 @@ func (e *eventsubEventCrawler) checkTableBodyStart(node *html.Node) {
 func (e *eventsubEventCrawler) parseEventTable(node *html.Node) {
 	var (
 		fieldName        string
-		fieldType        string
+		fieldTy          string
 		fieldDescription string
+		fieldRelation    fieldTypeRelation
 	)
 	position := namePosition
 
@@ -188,13 +196,15 @@ func (e *eventsubEventCrawler) parseEventTable(node *html.Node) {
 					logrus.Fatalf("Invalid inner tag for %+v", td)
 				}
 
-				nextPosition, retValue := getElementValue(innerTag, position)
+				nextPosition, retValue, relation := getElementValue(innerTag, position)
 
 				switch position {
 				case namePosition:
 					fieldName = retValue
+					fieldRelation = relation
+					logrus.Debugf("Relation: [%s] %s %d", e.tempEvent.SpaceSeparatedName, fieldName, relation)
 				case typePosition:
-					fieldType = retValue
+					fieldTy = retValue
 				case descriptionPosition:
 					fieldDescription = retValue
 				}
@@ -202,10 +212,16 @@ func (e *eventsubEventCrawler) parseEventTable(node *html.Node) {
 				position = nextPosition
 
 				if position == done {
-					field := newEventsubEventField(fieldName, fieldType, fieldDescription)
+					field := newEventsubEventField(fieldName, fieldTy, fieldDescription)
 					logrus.Tracef("Resulted field: %#v", field)
 					position = namePosition
-					e.tempEvent.Fields = append(e.tempEvent.Fields, field)
+
+					if fieldRelation == mainField {
+						e.tempEvent.Fields = append(e.tempEvent.Fields, field)
+					} else {
+						l := len(e.tempEvent.Fields)
+						e.tempEvent.Fields[l-1].Fields = append(e.tempEvent.Fields[l-1].Fields, field)
+					}
 				}
 			}
 		}
@@ -216,10 +232,11 @@ func (e *eventsubEventCrawler) parseEventTable(node *html.Node) {
 	e.state = eventHeaderSearch
 }
 
-// nolint:gocritic
 // getElementValue extract field element value and specify which position should be updated next.
-func getElementValue(node *html.Node, position processPosition) (processPosition, string) {
+func getElementValue(node *html.Node, position processPosition) (processPosition, string, fieldTypeRelation) {
 	var sb strings.Builder
+	fieldRelation := mainField
+
 	for tag := node; tag != nil; tag = tag.NextSibling {
 		var value string
 
@@ -234,6 +251,10 @@ func getElementValue(node *html.Node, position processPosition) (processPosition
 		}
 
 		sb.WriteString(value)
+	}
+
+	if strings.Contains(sb.String(), "\u00a0") {
+		fieldRelation = innerField
 	}
 
 	value := strings.ReplaceAll(sb.String(), "\u00a0", "")
@@ -251,7 +272,7 @@ func getElementValue(node *html.Node, position processPosition) (processPosition
 		position = done
 	}
 
-	return position, ret
+	return position, ret, fieldRelation
 }
 
 func standardEventTableValidator(tableHeaderNode *html.Node) bool {
@@ -339,12 +360,12 @@ type {{.Name}}Condition struct {}
 }
 
 func getFileName(name string) string {
-	splittedEventName := strings.Split(name, " ")
-	l := len(splittedEventName)
+	splitEventName := strings.Split(name, " ")
+	l := len(splitEventName)
 	loweredEventName := make([]string, 0, l-1)
 
 	for i := 0; i < l-1; i++ {
-		loweredEventName = append(loweredEventName, strings.ToLower(splittedEventName[i]))
+		loweredEventName = append(loweredEventName, strings.ToLower(splitEventName[i]))
 	}
 
 	return fmt.Sprintf("%s.go", strings.Join(loweredEventName, "_"))

@@ -19,6 +19,7 @@ type eventsubEventField struct {
 	Name        string
 	Type        string
 	Description string
+	Fields      []eventsubEventField
 }
 
 func newEventsubEvent(name string) eventsubEvent {
