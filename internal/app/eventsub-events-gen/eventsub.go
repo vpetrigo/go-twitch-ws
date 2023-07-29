@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
+	"unicode"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -31,14 +32,14 @@ func newEventsubEvent(name string) eventsubEvent {
 
 func newEventsubEventField(name, ty, description string) eventsubEventField {
 	titleCase := cases.Title(language.AmericanEnglish)
-	splittedName := strings.Split(name, "_")
+	splitName := strings.Split(name, "_")
 
-	for j := range splittedName {
-		splittedName[j] = titleCase.String(splittedName[j])
+	for j := range splitName {
+		splitName[j] = titleCase.String(splitName[j])
 	}
 
 	return eventsubEventField{
-		FieldName:   strings.Join(splittedName, ""),
+		FieldName:   strings.Join(splitName, ""),
 		Name:        name,
 		Type:        ty,
 		Description: description,
@@ -58,23 +59,51 @@ func (e *eventsubEvent) String() string {
 }
 
 func (e *eventsubEvent) stripDescriptionToComment() {
-	for i := range e.Fields {
-		e.Fields[i].Description = strings.Split(e.Fields[i].Description, ".")[0] + "."
-	}
+	descriptionToComment(e.Fields)
 }
 
 func (e *eventsubEvent) updateTypeToGoAcceptable() {
-	for i := range e.Fields {
-		switch e.Fields[i].Type {
-		case "integer":
-			e.Fields[i].Type = "int"
-		case "boolean":
-			e.Fields[i].Type = "bool"
-		case "string":
-		case "string[]":
-			e.Fields[i].Type = "[]string"
-		default:
-			e.Fields[i].Type = "interface{}"
+	convertToGoTypes(e.Name, e.Fields)
+}
+
+func descriptionToComment(events []eventsubEventField) {
+	for i := range events {
+		events[i].Description = strings.Split(events[i].Description, ".")[0] + "."
+
+		if len(events[i].Fields) > 0 {
+			descriptionToComment(events[i].Fields)
 		}
 	}
+}
+
+func convertToGoTypes(prefix string, events []eventsubEventField) {
+	for i := range events {
+		switch events[i].Type {
+		case "integer":
+			events[i].Type = "int"
+		case "boolean":
+			events[i].Type = "bool"
+		case "string":
+		case "string[]":
+			events[i].Type = "[]string"
+		default:
+			if len(events[i].Fields) == 0 {
+				events[i].Type = "interface{}"
+			} else {
+				events[i].Type = firstLetterToLower(fmt.Sprintf("%s%s", prefix, events[i].FieldName))
+				convertToGoTypes(prefix, events[i].Fields)
+			}
+		}
+	}
+}
+
+func firstLetterToLower(s string) string {
+	if s == "" {
+		return s
+	}
+
+	r := []rune(s)
+	r[0] = unicode.ToLower(r[0])
+
+	return string(r)
 }

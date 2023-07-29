@@ -232,6 +232,10 @@ func (e *eventsubEventCrawler) parseEventTable(node *html.Node) {
 	e.state = eventHeaderSearch
 }
 
+// TODO: split this function into multiple based on required feature:
+// - extract column value
+// - determine main/inner field
+// - remove HTML &nbsp; characters
 // getElementValue extract field element value and specify which position should be updated next.
 func getElementValue(node *html.Node, position processPosition) (processPosition, string, fieldTypeRelation) {
 	var sb strings.Builder
@@ -329,6 +333,11 @@ func generateEventsubFiles(events []eventsubEvent) error {
 type {{.Name}} struct {
 {{range .Fields}}{{.FieldName}} {{.Type}} ` + "`json:\"{{.Name}}\"` // {{.Description}}\n" + `{{end}}}
 
+{{range .Fields}}{{if .Fields}}type {{.Type}} struct {
+{{range .Fields}}{{.FieldName}} {{.Type}} ` + "`json:\"{{.Name}}\"` // {{.Description}}\n" + `{{end}}}
+
+{{end}}{{end}}
+
 type {{.Name}}Condition struct {}
 `
 
@@ -346,6 +355,10 @@ type {{.Name}}Condition struct {}
 
 		if err != nil {
 			logrus.Fatal(err)
+		}
+
+		if strings.HasPrefix(e.Name, "Charity") {
+			logrus.Debugf("%s", buf.String())
 		}
 
 		b, _ := format.Source(buf.Bytes())
