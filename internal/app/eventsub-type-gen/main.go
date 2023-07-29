@@ -284,16 +284,21 @@ func getOutputLines(eventsubTypes []subscriptionType) []outputLine {
 		splittedName := strings.FieldsFunc(v.Name, func(c rune) bool {
 			return c == '.' || c == '_'
 		})
-		logrus.Debug(splittedName)
+		logrus.Trace(splittedName)
 
 		for i := 0; i < len(splittedName); i++ {
 			titleCase := cases.Title(language.AmericanEnglish)
 			splittedName[i] = titleCase.String(splittedName[i])
 		}
 
-		baseName := strings.Join(splittedName, "")
+		baseName := strings.ReplaceAll(v.Type, " ", "")
+
+		if strings.HasPrefix(baseName, "Goal") {
+			baseName = "Goals"
+		}
+
 		msgType := fmt.Sprintf("%sEvent", baseName)
-		conditionType := fmt.Sprintf("%sCondition", baseName)
+		conditionType := fmt.Sprintf("%sEventCondition", baseName)
 
 		output = append(output, outputLine{
 			Name:          v.Name,
