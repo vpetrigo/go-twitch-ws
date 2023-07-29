@@ -1,8 +1,8 @@
 package twitchws
 
 type GoalsEvent struct {
-	Id                   string `json:"id"`                     // An ID that identifies this event.
-	BroadcasterUserId    string `json:"broadcaster_user_id"`    // An ID that uniquely identifies the broadcaster.
+	ID                   string `json:"id"`                     // An ID that identifies this event.
+	BroadcasterUserID    string `json:"broadcaster_user_id"`    // An ID that uniquely identifies the broadcaster.
 	BroadcasterUserName  string `json:"broadcaster_user_name"`  // The broadcaster’s display name.
 	BroadcasterUserLogin string `json:"broadcaster_user_login"` // The broadcaster’s user handle.
 	Type                 string `json:"type"`                   // The type of goal.

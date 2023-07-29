@@ -1,8 +1,8 @@
 package twitchws
 
 type ChannelPointsCustomRewardRemoveEvent struct {
-	Id                                string      `json:"id"`                                    // The reward identifier.
-	BroadcasterUserId                 string      `json:"broadcaster_user_id"`                   // The requested broadcaster ID.
+	ID                                string      `json:"id"`                                    // The reward identifier.
+	BroadcasterUserID                 string      `json:"broadcaster_user_id"`                   // The requested broadcaster ID.
 	BroadcasterUserLogin              string      `json:"broadcaster_user_login"`                // The requested broadcaster login.
 	BroadcasterUserName               string      `json:"broadcaster_user_name"`                 // The requested broadcaster display name.
 	IsEnabled                         bool        `json:"is_enabled"`                            // Is the reward currently enabled.

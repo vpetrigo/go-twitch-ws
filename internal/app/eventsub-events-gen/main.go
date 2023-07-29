@@ -66,12 +66,6 @@ func main() {
 
 	events := getEvents(resp)
 	logrus.Debugf("Events size: %d", len(events))
-
-	for i, v := range events {
-		logrus.Printf("Event #%d\n", i+1)
-		logrus.Printf("%s\n", &v)
-	}
-
 	_ = generateEventsubFiles(events)
 }
 

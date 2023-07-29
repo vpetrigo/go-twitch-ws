@@ -1,8 +1,8 @@
 package twitchws
 
 type ChannelPredictionLockEvent struct {
-	Id                   string      `json:"id"`                     // Channel Points Prediction ID.
-	BroadcasterUserId    string      `json:"broadcaster_user_id"`    // The requested broadcaster ID.
+	ID                   string      `json:"id"`                     // Channel Points Prediction ID.
+	BroadcasterUserID    string      `json:"broadcaster_user_id"`    // The requested broadcaster ID.
 	BroadcasterUserLogin string      `json:"broadcaster_user_login"` // The requested broadcaster login.
 	BroadcasterUserName  string      `json:"broadcaster_user_name"`  // The requested broadcaster display name.
 	Title                string      `json:"title"`                  // Title for the Channel Points Prediction.

@@ -1,8 +1,8 @@
 package twitchws
 
 type CharityCampaignStopEvent struct {
-	Id                 string                                `json:"id"`                  // An ID that identifies the charity campaign.
-	BroadcasterId      string                                `json:"broadcaster_id"`      // An ID that identifies the broadcaster that ran the campaign.
+	ID                 string                                `json:"id"`                  // An ID that identifies the charity campaign.
+	BroadcasterID      string                                `json:"broadcaster_id"`      // An ID that identifies the broadcaster that ran the campaign.
 	BroadcasterLogin   string                                `json:"broadcaster_login"`   // The broadcaster’s login name.
 	BroadcasterName    string                                `json:"broadcaster_name"`    // The broadcaster’s display name.
 	CharityName        string                                `json:"charity_name"`        // The charity’s name.

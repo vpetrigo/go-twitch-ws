@@ -1,7 +1,7 @@
 package twitchws
 
 type UserUpdateEvent struct {
-	UserId        string `json:"user_id"`        // The user’s user id.
+	UserID        string `json:"user_id"`        // The user’s user id.
 	UserLogin     string `json:"user_login"`     // The user’s user login.
 	UserName      string `json:"user_name"`      // The user’s user display name.
 	Email         string `json:"email"`          // The user’s email address.

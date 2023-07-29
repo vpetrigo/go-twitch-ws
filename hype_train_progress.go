@@ -1,8 +1,8 @@
 package twitchws
 
 type HypeTrainProgressEvent struct {
-	Id                   string      `json:"id"`                     // The Hype Train ID.
-	BroadcasterUserId    string      `json:"broadcaster_user_id"`    // The requested broadcaster ID.
+	ID                   string      `json:"id"`                     // The Hype Train ID.
+	BroadcasterUserID    string      `json:"broadcaster_user_id"`    // The requested broadcaster ID.
 	BroadcasterUserLogin string      `json:"broadcaster_user_login"` // The requested broadcaster login.
 	BroadcasterUserName  string      `json:"broadcaster_user_name"`  // The requested broadcaster display name.
 	Level                int         `json:"level"`                  // The current level of the Hype Train.

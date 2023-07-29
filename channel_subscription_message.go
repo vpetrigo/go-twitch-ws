@@ -1,10 +1,10 @@
 package twitchws
 
 type ChannelSubscriptionMessageEvent struct {
-	UserId               string      `json:"user_id"`                // The user ID of the user who sent a resubscription chat message.
+	UserID               string      `json:"user_id"`                // The user ID of the user who sent a resubscription chat message.
 	UserLogin            string      `json:"user_login"`             // The user login of the user who sent a resubscription chat message.
 	UserName             string      `json:"user_name"`              // The user display name of the user who a resubscription chat message.
-	BroadcasterUserId    string      `json:"broadcaster_user_id"`    // The broadcaster user ID.
+	BroadcasterUserID    string      `json:"broadcaster_user_id"`    // The broadcaster user ID.
 	BroadcasterUserLogin string      `json:"broadcaster_user_login"` // The broadcaster login.
 	BroadcasterUserName  string      `json:"broadcaster_user_name"`  // The broadcaster display name.
 	Tier                 string      `json:"tier"`                   // The tier of the user’s subscription.

@@ -1,8 +1,8 @@
 package twitchws
 
 type ChannelPollBeginEvent struct {
-	Id                   string      `json:"id"`                     // ID of the poll.
-	BroadcasterUserId    string      `json:"broadcaster_user_id"`    // The requested broadcaster ID.
+	ID                   string      `json:"id"`                     // ID of the poll.
+	BroadcasterUserID    string      `json:"broadcaster_user_id"`    // The requested broadcaster ID.
 	BroadcasterUserLogin string      `json:"broadcaster_user_login"` // The requested broadcaster login.
 	BroadcasterUserName  string      `json:"broadcaster_user_name"`  // The requested broadcaster display name.
 	Title                string      `json:"title"`                  // Question displayed for the poll.

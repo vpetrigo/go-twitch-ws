@@ -1,7 +1,7 @@
 package twitchws
 
 type ChannelGuestStarSettingsUpdateEvent struct {
-	BroadcasterUserId           string `json:"broadcaster_user_id"`             // User ID of the host channel.
+	BroadcasterUserID           string `json:"broadcaster_user_id"`             // User ID of the host channel.
 	BroadcasterUserName         string `json:"broadcaster_user_name"`           // The broadcaster display name.
 	BroadcasterUserLogin        string `json:"broadcaster_user_login"`          // The broadcaster login.
 	IsModeratorSendLiveEnabled  bool   `json:"is_moderator_send_live_enabled"`  // Flag determining if Guest Star moderators have access to control whether a guest is live once assigned to a slot.

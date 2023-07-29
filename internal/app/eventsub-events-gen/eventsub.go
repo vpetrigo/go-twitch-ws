@@ -39,7 +39,7 @@ func newEventsubEventField(name, ty, description string) eventsubEventField {
 	}
 
 	return eventsubEventField{
-		FieldName:   strings.Join(splitName, ""),
+		FieldName:   strings.ReplaceAll(strings.Join(splitName, ""), "Id", "ID"),
 		Name:        name,
 		Type:        ty,
 		Description: description,
