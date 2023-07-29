@@ -12,26 +12,11 @@ import (
 	"github.com/vpetrigo/go-twitch-ws/internal/pkg/crawler"
 	"github.com/vpetrigo/go-twitch-ws/internal/pkg/refdoc"
 	"golang.org/x/net/html"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 const eventsubEventsRefURL = "https://dev.twitch.tv/docs/eventsub/eventsub-reference/"
 
-type eventsubEventField struct {
-	FieldName   string
-	Name        string
-	Type        string
-	Description string
-}
-
 type crawlerState int
-type manyEventsubEventFields []eventsubEventField
-
-type eventsubEvent struct {
-	Name   string
-	Fields manyEventsubEventFields
-}
 
 type eventsubEventCrawler struct {
 	events    []eventsubEvent
@@ -77,22 +62,10 @@ func main() {
 
 	for i, v := range events {
 		logrus.Printf("Event #%d\n", i+1)
-		logrus.Printf("%+v\n", v)
+		logrus.Printf("%s\n", &v)
 	}
 
 	_ = generateEventsubFiles(events)
-}
-
-func (ev eventsubEvent) String() string {
-	var sb strings.Builder
-
-	sb.WriteString(fmt.Sprintf("EventSub Event {%s}\n", ev.Name))
-
-	for i, v := range ev.Fields {
-		sb.WriteString(fmt.Sprintf("  #%2d: [%s] [%s]\n", i+1, v.Name, v.Type))
-	}
-
-	return sb.String()
 }
 
 func getEvents(resp *html.Node) []eventsubEvent {
@@ -195,7 +168,11 @@ func (e *eventsubEventCrawler) checkTableBodyStart(node *html.Node) {
 }
 
 func (e *eventsubEventCrawler) parseEventTable(node *html.Node) {
-	fields := eventsubEventField{}
+	var (
+		fieldName        string
+		fieldType        string
+		fieldDescription string
+	)
 	position := namePosition
 
 	for tr := node; tr != nil; tr = tr.NextSibling {
@@ -211,12 +188,24 @@ func (e *eventsubEventCrawler) parseEventTable(node *html.Node) {
 					logrus.Fatalf("Invalid inner tag for %+v", td)
 				}
 
-				position = getElementValue(innerTag, &fields, position)
+				nextPosition, retValue := getElementValue(innerTag, position)
+
+				switch position {
+				case namePosition:
+					fieldName = retValue
+				case typePosition:
+					fieldType = retValue
+				case descriptionPosition:
+					fieldDescription = retValue
+				}
+
+				position = nextPosition
 
 				if position == done {
-					logrus.Tracef("Resulted field: %#v", fields)
+					field := newEventsubEventField(fieldName, fieldType, fieldDescription)
+					logrus.Tracef("Resulted field: %#v", field)
 					position = namePosition
-					e.tempEvent.Fields = append(e.tempEvent.Fields, fields)
+					e.tempEvent.Fields = append(e.tempEvent.Fields, field)
 				}
 			}
 		}
@@ -227,7 +216,9 @@ func (e *eventsubEventCrawler) parseEventTable(node *html.Node) {
 	e.state = eventHeaderSearch
 }
 
-func getElementValue(node *html.Node, fields *eventsubEventField, position processPosition) processPosition {
+// nolint:gocritic
+// getElementValue extract field element value and specify which position should be updated next.
+func getElementValue(node *html.Node, position processPosition) (processPosition, string) {
 	var sb strings.Builder
 	for tag := node; tag != nil; tag = tag.NextSibling {
 		var value string
@@ -246,20 +237,21 @@ func getElementValue(node *html.Node, fields *eventsubEventField, position proce
 	}
 
 	value := strings.ReplaceAll(sb.String(), "\u00a0", "")
+	var ret string
 
 	switch position {
 	case namePosition:
-		fields.Name = value
-		return typePosition
+		ret = value
+		position = typePosition
 	case typePosition:
-		fields.Type = strings.ToLower(value)
-		return descriptionPosition
+		ret = strings.ToLower(value)
+		position = descriptionPosition
 	case descriptionPosition:
-		fields.Description = value
-		return done
+		ret = value
+		position = done
 	}
 
-	return position
+	return position, ret
 }
 
 func standardEventTableValidator(tableHeaderNode *html.Node) bool {
@@ -322,13 +314,12 @@ type {{.Name}}Condition struct {}
 	t := template.Must(template.New("eventsubFileContent").Parse(eventsubFileContentTemplate))
 
 	for i, e := range events {
-		splittedEventName := strings.Split(e.Name, " ")
-		fileName := getFileName(splittedEventName)
+		fileName := getFileName(e.Name)
 
 		logrus.Tracef("file #%2d: %s", i+1, fileName)
-		e = stripDescriptionToComment(e)
-		e = updateStructName(e)
-		e = updateTypeToGoAcceptable(e)
+		e.stripDescriptionToComment()
+		e.updateStructName()
+		e.updateTypeToGoAcceptable()
 
 		var buf bytes.Buffer
 		err := t.Execute(&buf, e)
@@ -348,7 +339,8 @@ type {{.Name}}Condition struct {}
 	return nil
 }
 
-func getFileName(splittedEventName []string) string {
+func getFileName(name string) string {
+	splittedEventName := strings.Split(name, " ")
 	l := len(splittedEventName)
 	loweredEventName := make([]string, 0, l-1)
 
@@ -357,45 +349,4 @@ func getFileName(splittedEventName []string) string {
 	}
 
 	return fmt.Sprintf("%s.go", strings.Join(loweredEventName, "_"))
-}
-
-func stripDescriptionToComment(e eventsubEvent) eventsubEvent {
-	for i := range e.Fields {
-		e.Fields[i].Description = strings.Split(e.Fields[i].Description, ".")[0] + "."
-	}
-
-	return e
-}
-
-func updateStructName(e eventsubEvent) eventsubEvent {
-	e.Name = strings.ReplaceAll(e.Name, " ", "")
-
-	return e
-}
-
-func updateTypeToGoAcceptable(e eventsubEvent) eventsubEvent {
-	for i := range e.Fields {
-		titleCase := cases.Title(language.AmericanEnglish)
-		splittedName := strings.Split(e.Fields[i].Name, "_")
-
-		for j := range splittedName {
-			splittedName[j] = titleCase.String(splittedName[j])
-		}
-
-		e.Fields[i].FieldName = strings.Join(splittedName, "")
-
-		switch e.Fields[i].Type {
-		case "integer":
-			e.Fields[i].Type = "int"
-		case "boolean":
-			e.Fields[i].Type = "bool"
-		case "string":
-		case "string[]":
-			e.Fields[i].Type = "[]string"
-		default:
-			e.Fields[i].Type = "interface{}"
-		}
-	}
-
-	return e
 }
