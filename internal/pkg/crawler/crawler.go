@@ -29,10 +29,10 @@ func (cs crawlerStack[T]) len() int {
 	return len(cs)
 }
 
-// GenericCrawler pre-order traverse HTML crawler.
+// ElementTraversal pre-order traverse HTML document.
 //
-// Calls passed `crawl` handler every time a new HTML ElementNode is found.
-func GenericCrawler(node *html.Node, crawl Crawler) {
+// Found HTML ElementNode items passed to `crawler`.
+func ElementTraversal(node *html.Node, crawler Crawler) {
 	if node == nil {
 		return
 	}
@@ -51,7 +51,7 @@ func GenericCrawler(node *html.Node, crawl Crawler) {
 		top, stack = stack.pop()
 
 		if IsElementNode(top) {
-			crawl.Crawl(top)
+			crawler.Crawl(top)
 		}
 
 		if e := skipToElementNode(top.NextSibling); e != nil {
@@ -64,14 +64,17 @@ func GenericCrawler(node *html.Node, crawl Crawler) {
 	}
 }
 
+// IsElementNode helper for checking the given HTML node is an ElementNode.
 func IsElementNode(node *html.Node) bool {
 	return node.Type == html.ElementNode
 }
 
+// IsTextNode helper for checking the given HTML node is a TextNode.
 func IsTextNode(node *html.Node) bool {
 	return node.Type == html.TextNode
 }
 
+// skipToElementNode helper for skipping to the next ElementNode if available.
 func skipToElementNode(node *html.Node) *html.Node {
 	for e := node; e != nil; e = e.NextSibling {
 		if IsElementNode(e) {

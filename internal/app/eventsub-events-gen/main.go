@@ -69,7 +69,7 @@ func getEvents(resp *html.Node) []eventsubEvent {
 	events := &eventsubEventCrawler{
 		events: make([]eventsubEvent, 0, expectedEventNumber),
 	}
-	crawler.GenericCrawler(resp, events)
+	crawler.ElementTraversal(resp, events)
 	return events.events
 }
 

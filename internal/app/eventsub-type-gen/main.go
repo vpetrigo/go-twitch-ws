@@ -82,7 +82,7 @@ func main() {
 
 func getSubscriptionTypes(body *html.Node) []subscriptionType {
 	types := new(eventsubCrawler)
-	crawler.GenericCrawler(body, types)
+	crawler.ElementTraversal(body, types)
 
 	return types.Types
 }
