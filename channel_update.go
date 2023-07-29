@@ -20,6 +20,6 @@ type ChannelUpdateEvent struct {
 	ContentClassificationLabels []string `json:"content_classification_labels"` // Array of content classification label IDs currently applied on the Channel.
 }
 
-type ChannelUpdateCondition struct {
+type ChannelUpdateEventCondition struct {
 	BroadcasterUserID string `json:"broadcaster_user_id"` // The broadcaster user ID for the channel you want to get updates for.
 }

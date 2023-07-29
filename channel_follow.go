@@ -15,7 +15,7 @@ type ChannelFollowEvent struct {
 	FollowedAt           string `json:"followed_at"`            // RFC3339 timestamp of when the follow occurred.
 }
 
-type ChannelFollowCondition struct {
+type ChannelFollowEventCondition struct {
 	BroadcasterUserID string `json:"broadcaster_user_id"` // The broadcaster user ID for the channel you want to get follow notifications for.
 	ModeratorUserID   string `json:"moderator_user_id"`   // The ID of the moderator of the channel you want to get follow notifications for. If you have authorization from the broadcaster rather than a moderator, specify the broadcaster’s user ID here.
 }
