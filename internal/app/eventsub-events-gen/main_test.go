@@ -271,9 +271,8 @@ const (
 )
 
 type testFixture struct {
-	tableHTML    string
-	expected     bool
-	validationFn func(node *html.Node) bool
+	tableHTML string
+	expected  bool
 }
 
 func Test_standardEventTableValidator(t *testing.T) {
