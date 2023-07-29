@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"go/format"
 	"log"
-	"net/http"
 	"os"
 	"strings"
 	"text/template"
 
 	"github.com/sirupsen/logrus"
+	"github.com/vpetrigo/go-twitch-ws/internal/pkg/crawler"
+	"github.com/vpetrigo/go-twitch-ws/internal/pkg/refdoc"
 	"golang.org/x/net/html"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -48,8 +49,9 @@ type outputLine struct {
 	ConditionType string
 }
 
-type crawler interface {
-	Crawl(node *html.Node)
+type eventsubCrawler struct {
+	Types []subscriptionType
+	state eventSubCrawlerState
 }
 
 type eventSubCrawlerState uint32
@@ -64,50 +66,29 @@ const (
 )
 
 func main() {
-	logrus.SetLevel(logrus.DebugLevel)
-	body, err := getReferenceDocBody()
+	logrus.SetLevel(logrus.InfoLevel)
+	body, err := refdoc.GetReferenceDocPage(eventsubTypesRefURL)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	types := getSubscriptionTypes(body)
-	_ = generateFile(types)
-}
 
-func getReferenceDocBody() (*html.Node, error) {
-	resp, err := http.Get(eventsubTypesRefURL)
-
-	if err != nil {
-		return nil, err
+	if err = generateFile(types); err != nil {
+		logrus.Fatal(err)
 	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	body, err := html.Parse(resp.Body)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return body, nil
 }
 
 func getSubscriptionTypes(body *html.Node) []subscriptionType {
 	types := new(eventsubCrawler)
-	genericCrawler(body, types)
+	crawler.ElementTraversal(body, types)
 
 	return types.Types
 }
 
-type eventsubCrawler struct {
-	Types []subscriptionType
-	state eventSubCrawlerState
-}
-
 func (e *eventsubCrawler) Crawl(node *html.Node) {
-	if !isElementNode(node) || e.state == endSearch {
+	if !crawler.IsElementNode(node) || e.state == endSearch {
 		return
 	}
 
@@ -166,7 +147,7 @@ func (e *eventsubCrawler) checkEventsubTableHeading(node *html.Node) {
 		out := make([]string, 0, numberOfHeaderColumns)
 
 		for th := tr.FirstChild; th != nil; th = th.NextSibling {
-			if !isElementNode(th) {
+			if !crawler.IsElementNode(th) {
 				continue
 			}
 
@@ -223,7 +204,7 @@ func (e *eventsubCrawler) checkRowStart(node *html.Node) {
 
 	if node.Data == "tr" {
 		for td := node.FirstChild; td != nil; td = td.NextSibling {
-			if !isElementNode(td) {
+			if !crawler.IsElementNode(td) {
 				continue
 			}
 
@@ -241,7 +222,7 @@ func (e *eventsubCrawler) checkRowStart(node *html.Node) {
 				}
 			}
 
-			if isElementNode(innerTag) {
+			if crawler.IsElementNode(innerTag) {
 				tagValue := strings.TrimSuffix(innerTag.Data, "\n")
 
 				switch tagValue {
@@ -270,7 +251,7 @@ func (e *eventsubCrawler) checkRowStart(node *html.Node) {
 				var sb strings.Builder
 
 				for text := innerTag; text != nil; text = text.NextSibling {
-					if !isElementNode(text) {
+					if !crawler.IsElementNode(text) {
 						sb.WriteString(text.Data)
 					} else {
 						sb.WriteString(text.FirstChild.Data)
@@ -286,56 +267,14 @@ func (e *eventsubCrawler) checkRowStart(node *html.Node) {
 	}
 }
 
-func isElementNode(node *html.Node) bool {
-	return node.Type == html.ElementNode
-}
-
 func skipToAnchor(node *html.Node) *html.Node {
 	for it := node.NextSibling; it != nil; it = it.NextSibling {
-		if isElementNode(it) && it.Data == "a" {
+		if crawler.IsElementNode(it) && it.Data == "a" {
 			return it
 		}
 	}
 
 	return nil
-}
-
-func genericCrawler(node *html.Node, crawl crawler) {
-	if node == nil {
-		return
-	}
-
-	var top *html.Node
-	stack := make([]*html.Node, 0)
-	stack = append(stack, node)
-
-	for {
-		l := len(stack)
-
-		if l == 0 {
-			break
-		}
-
-		top, stack = stack[l-1], stack[:l-1]
-
-		if isElementNode(top) {
-			crawl.Crawl(top)
-		}
-
-		for e := top.NextSibling; e != nil; e = e.NextSibling {
-			if isElementNode(e) {
-				stack = append(stack, e)
-				break
-			}
-		}
-
-		for e := top.FirstChild; e != nil; e = e.NextSibling {
-			if isElementNode(e) {
-				stack = append(stack, e)
-				break
-			}
-		}
-	}
 }
 
 func getOutputLines(eventsubTypes []subscriptionType) []outputLine {
@@ -345,16 +284,21 @@ func getOutputLines(eventsubTypes []subscriptionType) []outputLine {
 		splittedName := strings.FieldsFunc(v.Name, func(c rune) bool {
 			return c == '.' || c == '_'
 		})
-		logrus.Debug(splittedName)
+		logrus.Trace(splittedName)
 
 		for i := 0; i < len(splittedName); i++ {
 			titleCase := cases.Title(language.AmericanEnglish)
 			splittedName[i] = titleCase.String(splittedName[i])
 		}
 
-		baseName := strings.Join(splittedName, "")
+		baseName := strings.ReplaceAll(v.Type, " ", "")
+
+		if strings.HasPrefix(baseName, "Goal") {
+			baseName = "Goals"
+		}
+
 		msgType := fmt.Sprintf("%sEvent", baseName)
-		conditionType := fmt.Sprintf("%sCondition", baseName)
+		conditionType := fmt.Sprintf("%sEventCondition", baseName)
 
 		output = append(output, outputLine{
 			Name:          v.Name,

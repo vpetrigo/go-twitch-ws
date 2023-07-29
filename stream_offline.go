@@ -9,6 +9,6 @@ type StreamOfflineEvent struct {
 	BroadcasterUserName  string `json:"broadcaster_user_name"`  // The broadcaster’s user display name.
 }
 
-type StreamOfflineCondition struct {
+type StreamOfflineEventCondition struct {
 	BroadcasterUserID string `json:"broadcaster_user_id"` // The broadcaster user ID you want to get stream offline notifications for.
 }

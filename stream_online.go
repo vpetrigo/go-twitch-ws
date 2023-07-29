@@ -13,6 +13,6 @@ type StreamOnlineEvent struct {
 	StartedAt            string `json:"started_at"`             // The timestamp at which the stream went online at.
 }
 
-type StreamOnlineCondition struct {
+type StreamOnlineEventCondition struct {
 	BroadcasterUserID string `json:"broadcaster_user_id"` // The broadcaster user ID you want to get stream online notifications for.
 }

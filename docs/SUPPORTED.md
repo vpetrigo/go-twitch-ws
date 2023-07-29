@@ -10,51 +10,51 @@
 
 - [x] Channel Update
 - [x] Channel Follow
-- [ ] Channel Subscribe
-- [ ] Channel Subscription End
-- [ ] Channel Subscription Gift
-- [ ] Channel Subscription Message
-- [ ] Channel Cheer
-- [ ] Channel Raid
-- [ ] Channel Ban
-- [ ] Channel Unban
-- [ ] Channel Moderator Add
-- [ ] Channel Moderator Remove
-- [ ] Channel Guest Star Session Begin
-- [ ] Channel Guest Star Session End
-- [ ] Channel Guest Star Guest Update
-- [ ] Channel Guest Star Slot Update
-- [ ] Channel Guest Star Settings Update
-- [ ] Channel Channel Points Custom Reward Add
-- [ ] Channel Channel Points Custom Reward Update
-- [ ] Channel Channel Points Custom Reward Remove
-- [ ] Channel Channel Points Custom Reward Redemption Add
-- [ ] Channel Channel Points Custom Reward Redemption Update
-- [ ] Channel Poll Begin
-- [ ] Channel Poll Progress
-- [ ] Channel Poll End
-- [ ] Channel Prediction Begin
-- [ ] Channel Prediction Progress
-- [ ] Channel Prediction Lock
-- [ ] Channel Prediction End
-- [ ] Channel Charity Campaign Donate
-- [ ] Channel Charity Campaign Start
-- [ ] Channel Charity Campaign Progress
-- [ ] Channel Charity Campaign Stop
-- [ ] Drop Entitlement Grant
-- [ ] Extension Bits Transaction Create
-- [ ] Channel Goal Begin
-- [ ] Channel Goal Progress
-- [ ] Channel Goal End
-- [ ] Channel Hype Train Begin
-- [ ] Channel Hype Train Progress
-- [ ] Channel Hype Train End
+- [x] Channel Subscribe
+- [x] Channel Subscription End
+- [x] Channel Subscription Gift
+- [x] Channel Subscription Message
+- [x] Channel Cheer
+- [x] Channel Raid
+- [x] Channel Ban
+- [x] Channel Unban
+- [x] Channel Moderator Add
+- [x] Channel Moderator Remove
+- [x] Channel Guest Star Session Begin
+- [x] Channel Guest Star Session End
+- [x] Channel Guest Star Guest Update
+- [x] Channel Guest Star Slot Update
+- [x] Channel Guest Star Settings Update
+- [x] Channel Points Custom Reward Add
+- [x] Channel Points Custom Reward Update
+- [x] Channel Points Custom Reward Remove
+- [x] Channel Points Custom Reward Redemption Add
+- [x] Channel Points Custom Reward Redemption Update
+- [x] Channel Poll Begin
+- [x] Channel Poll Progress
+- [x] Channel Poll End
+- [x] Channel Prediction Begin
+- [x] Channel Prediction Progress
+- [x] Channel Prediction Lock
+- [x] Channel Prediction End
+- [x] Channel Charity Campaign Donate
+- [x] Channel Charity Campaign Start
+- [x] Channel Charity Campaign Progress
+- [x] Channel Charity Campaign Stop
+- [x] Drop Entitlement Grant
+- [x] Extension Bits Transaction Create
+- [x] Channel Goal Begin
+- [x] Channel Goal Progress
+- [x] Channel Goal End
+- [x] Channel Hype Train Begin
+- [x] Channel Hype Train Progress
+- [x] Channel Hype Train End
 - [ ] Channel Shield Mode Begin
 - [ ] Channel Shield Mode End
 - [ ] Channel Shoutout Create
 - [ ] Channel Shoutout Receive
 - [x] Stream Online
 - [x] Stream Offline
-- [ ] User Authorization Grant
-- [ ] User Authorization Revoke
-- [ ] User Update
+- [x] User Authorization Grant
+- [x] User Authorization Revoke
+- [x] User Update
