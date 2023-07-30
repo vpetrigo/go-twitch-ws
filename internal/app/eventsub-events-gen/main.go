@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go/format"
 	"os"
+	"path"
 	"strings"
 	"text/template"
 
@@ -215,7 +216,7 @@ func (e *eventsubEventCrawler) parseEventTable(node *html.Node) {
 						e.tempEvent.Fields = append(e.tempEvent.Fields, field)
 					} else {
 						l := len(e.tempEvent.Fields)
-						e.tempEvent.Fields[l-1].Fields = append(e.tempEvent.Fields[l-1].Fields, field)
+						e.tempEvent.Fields[l-1].InnerFields = append(e.tempEvent.Fields[l-1].InnerFields, field)
 					}
 				}
 			}
@@ -325,13 +326,13 @@ func validateTableHeading(tr *html.Node, validHeading []string) bool {
 
 func generateEventsubFiles(events []eventsubEvent) error {
 	const defaultFileAccess = 0o644
-	const eventsubFileContentTemplate = `package twitchws
+	const eventsubFileContentTemplate = `package eventsub
 
 type {{.Name}} struct {
 {{range .Fields}}{{.FieldName}} {{.Type}} ` + "`json:\"{{.Name}}\"` // {{.Description}}\n" + `{{end}}}
 
-{{range .Fields}}{{if .Fields}}type {{.Type}} struct {
-{{range .Fields}}{{.FieldName}} {{.Type}} ` + "`json:\"{{.Name}}\"` // {{.Description}}\n" + `{{end}}}
+{{range .Fields}}{{if .InnerFields}}type {{.Type}} struct {
+{{range .InnerFields}}{{.FieldName}} {{.Type}} ` + "`json:\"{{.Name}}\"` // {{.Description}}\n" + `{{end}}}
 
 {{end}}{{end}}
 
@@ -339,6 +340,7 @@ type {{.Name}}Condition struct {}
 `
 
 	t := template.Must(template.New("eventsubFileContent").Parse(eventsubFileContentTemplate))
+	outdir := path.Join("pkg", "eventsub")
 
 	for i, e := range events {
 		fileName := getFileName(e.SpaceSeparatedName)
@@ -355,11 +357,8 @@ type {{.Name}}Condition struct {}
 		}
 
 		b, _ := format.Source(buf.Bytes())
-		_, err = os.Stat(fileName)
-
-		if os.IsNotExist(err) {
-			_ = os.WriteFile(fileName, b, defaultFileAccess)
-		}
+		outFile := path.Join(outdir, fileName)
+		_ = os.WriteFile(outFile, b, defaultFileAccess)
 	}
 
 	return nil

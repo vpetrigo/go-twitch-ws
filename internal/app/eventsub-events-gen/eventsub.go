@@ -20,7 +20,7 @@ type eventsubEventField struct {
 	Name        string
 	Type        string
 	Description string
-	Fields      []eventsubEventField
+	InnerFields []eventsubEventField
 }
 
 func newEventsubEvent(name string) eventsubEvent {
@@ -70,8 +70,8 @@ func descriptionToComment(events []eventsubEventField) {
 	for i := range events {
 		events[i].Description = strings.Split(events[i].Description, ".")[0] + "."
 
-		if len(events[i].Fields) > 0 {
-			descriptionToComment(events[i].Fields)
+		if len(events[i].InnerFields) > 0 {
+			descriptionToComment(events[i].InnerFields)
 		}
 	}
 }
@@ -87,11 +87,11 @@ func convertToGoTypes(prefix string, events []eventsubEventField) {
 		case "string[]":
 			events[i].Type = "[]string"
 		default:
-			if len(events[i].Fields) == 0 {
+			if len(events[i].InnerFields) == 0 {
 				events[i].Type = "interface{}"
 			} else {
 				events[i].Type = firstLetterToLower(fmt.Sprintf("%s%s", prefix, events[i].FieldName))
-				convertToGoTypes(prefix, events[i].Fields)
+				convertToGoTypes(prefix, events[i].InnerFields)
 			}
 		}
 	}
