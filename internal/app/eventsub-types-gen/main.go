@@ -21,6 +21,8 @@ const eventsubTypesFile = "eventsub_types.go"
 const eventsubTypesRefURL = "https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/"
 const eventsubTypesFileTemplate = `package twitchws
 
+import "github.com/vpetrigo/go-twitch-ws/pkg/eventsub"
+
 type eventSubScope struct {
 	Version       string
 	MsgType       interface{}
@@ -29,7 +31,7 @@ type eventSubScope struct {
 
 var (
 	eventSubTypes = map[string]eventSubScope{
-		{{range .}}"{{.Name}}": {Version: "{{.Version}}", MsgType: &{{.MessageType}}{}, ConditionType: &{{.ConditionType}}{}},
+		{{range .}}"{{.Name}}": {Version: "{{.Version}}", MsgType: &eventsub.{{.MessageType}}{}, ConditionType: &eventsub.{{.ConditionType}}{}},
 		{{end}}
 	}
 )

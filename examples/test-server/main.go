@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/vpetrigo/go-twitch-ws/pkg/eventsub"
 
 	"github.com/vpetrigo/go-twitch-ws"
 )
@@ -49,8 +50,8 @@ func onNotificationEvent(_ *twitchws.Metadata, payload *twitchws.Payload) {
 	notification := payload.Payload.(twitchws.Notification)
 	logrus.Debugf("Notification: %+v", notification)
 
-	if event, ok := notification.Event.(*twitchws.ChannelFollowEvent); ok {
-		condition := notification.Subscription.Condition.(*twitchws.ChannelFollowEventCondition)
+	if event, ok := notification.Event.(*eventsub.ChannelFollowEvent); ok {
+		condition := notification.Subscription.Condition.(*eventsub.ChannelFollowEventCondition)
 		logrus.Debugf("Channel follow: %+v", event)
 		logrus.Debugf("Condition: %+v", condition)
 	}
