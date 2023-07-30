@@ -170,6 +170,18 @@ func (e *eventsubEventCrawler) checkTableBodyStart(node *html.Node) {
 }
 
 func (e *eventsubEventCrawler) parseEventTable(node *html.Node) {
+	for tr := node; tr != nil; tr = tr.NextSibling {
+		if crawler.IsElementNode(tr) && tr.Data == "tr" {
+			e.extractRowFieldData(tr)
+		}
+	}
+
+	e.events = append(e.events, e.tempEvent)
+	e.tempEvent.Fields = nil
+	e.state = eventHeaderSearch
+}
+
+func (e *eventsubEventCrawler) extractRowFieldData(tr *html.Node) {
 	var (
 		fieldName        string
 		fieldTy          string
@@ -178,54 +190,45 @@ func (e *eventsubEventCrawler) parseEventTable(node *html.Node) {
 	)
 	position := namePosition
 
-	for tr := node; tr != nil; tr = tr.NextSibling {
-		if crawler.IsElementNode(tr) && tr.Data == "tr" {
-			for td := tr.FirstChild; td != nil; td = td.NextSibling {
-				if !crawler.IsElementNode(td) {
-					continue
-				}
+	for td := tr.FirstChild; td != nil; td = td.NextSibling {
+		if !crawler.IsElementNode(td) {
+			continue
+		}
 
-				innerTag := td.FirstChild
+		innerTag := td.FirstChild
 
-				if innerTag == nil {
-					logrus.Fatalf("Invalid inner tag for %+v", td)
-				}
+		if innerTag == nil {
+			logrus.Fatalf("Invalid inner tag for %+v", td)
+		}
 
-				value := getElementValue(innerTag)
-				relation := getFieldTypeRelation(value)
-				value = replaceHTMLSpaces(value)
+		value := getElementValue(innerTag)
+		relation := getFieldTypeRelation(value)
+		value = replaceHTMLSpaces(value)
 
-				switch position {
-				case namePosition:
-					fieldName = value
-					fieldRelation = relation
-				case typePosition:
-					fieldTy = strings.ToLower(value)
-				case descriptionPosition:
-					fieldDescription = value
-				}
+		switch position {
+		case namePosition:
+			fieldName = value
+			fieldRelation = relation
+		case typePosition:
+			fieldTy = strings.ToLower(value)
+		case descriptionPosition:
+			fieldDescription = value
+		}
 
-				position = getNextPosition(position)
+		position = getNextPosition(position)
 
-				if position == done {
-					field := newEventsubEventField(fieldName, fieldTy, fieldDescription)
-					logrus.Tracef("Resulted field: %#v", field)
-					position = namePosition
+		if position == done {
+			field := newEventsubEventField(fieldName, fieldTy, fieldDescription)
+			logrus.Tracef("Resulted field: %#v", field)
 
-					if fieldRelation == mainField {
-						e.tempEvent.Fields = append(e.tempEvent.Fields, field)
-					} else {
-						l := len(e.tempEvent.Fields)
-						e.tempEvent.Fields[l-1].InnerFields = append(e.tempEvent.Fields[l-1].InnerFields, field)
-					}
-				}
+			if fieldRelation == mainField {
+				e.tempEvent.Fields = append(e.tempEvent.Fields, field)
+			} else {
+				l := len(e.tempEvent.Fields)
+				e.tempEvent.Fields[l-1].InnerFields = append(e.tempEvent.Fields[l-1].InnerFields, field)
 			}
 		}
 	}
-
-	e.events = append(e.events, e.tempEvent)
-	e.tempEvent.Fields = nil
-	e.state = eventHeaderSearch
 }
 
 func getElementValue(node *html.Node) string {
