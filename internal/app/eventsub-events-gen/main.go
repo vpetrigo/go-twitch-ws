@@ -175,9 +175,9 @@ func (e *eventsubEventCrawler) parseEventTable(node *html.Node) {
 			field, fieldType := getEventsubFieldFromTable(tr)
 
 			if fieldType == mainField {
-				e.tempEvent.addEventField(field)
+				e.tempEvent.addEventField(&field)
 			} else {
-				e.tempEvent.addInnerEventFieldToLastField(field)
+				e.tempEvent.addInnerEventFieldToLastField(&field)
 			}
 		}
 	}
