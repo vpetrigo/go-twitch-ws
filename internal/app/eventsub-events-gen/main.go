@@ -172,63 +172,19 @@ func (e *eventsubEventCrawler) checkTableBodyStart(node *html.Node) {
 func (e *eventsubEventCrawler) parseEventTable(node *html.Node) {
 	for tr := node; tr != nil; tr = tr.NextSibling {
 		if crawler.IsElementNode(tr) && tr.Data == "tr" {
-			e.extractRowFieldData(tr)
+			field, fieldType := getEventsubFieldFromTable(tr)
+
+			if fieldType == mainField {
+				e.tempEvent.addEventField(field)
+			} else {
+				e.tempEvent.addInnerEventFieldToLastField(field)
+			}
 		}
 	}
 
 	e.events = append(e.events, e.tempEvent)
 	e.tempEvent.Fields = nil
 	e.state = eventHeaderSearch
-}
-
-func (e *eventsubEventCrawler) extractRowFieldData(tr *html.Node) {
-	var (
-		fieldName        string
-		fieldTy          string
-		fieldDescription string
-		fieldRelation    fieldTypeRelation
-	)
-	position := namePosition
-
-	for td := tr.FirstChild; td != nil; td = td.NextSibling {
-		if !crawler.IsElementNode(td) {
-			continue
-		}
-
-		innerTag := td.FirstChild
-
-		if innerTag == nil {
-			logrus.Fatalf("Invalid inner tag for %+v", td)
-		}
-
-		value := getElementValue(innerTag)
-		relation := getFieldTypeRelation(value)
-		value = replaceHTMLSpaces(value)
-
-		switch position {
-		case namePosition:
-			fieldName = value
-			fieldRelation = relation
-		case typePosition:
-			fieldTy = strings.ToLower(value)
-		case descriptionPosition:
-			fieldDescription = value
-		}
-
-		position = getNextPosition(position)
-
-		if position == done {
-			field := newEventsubEventField(fieldName, fieldTy, fieldDescription)
-			logrus.Tracef("Resulted field: %#v", field)
-
-			if fieldRelation == mainField {
-				e.tempEvent.Fields = append(e.tempEvent.Fields, field)
-			} else {
-				l := len(e.tempEvent.Fields)
-				e.tempEvent.Fields[l-1].InnerFields = append(e.tempEvent.Fields[l-1].InnerFields, field)
-			}
-		}
-	}
 }
 
 func getElementValue(node *html.Node) string {
@@ -377,4 +333,104 @@ func getFileName(name string) string {
 	}
 
 	return fmt.Sprintf("%s.go", strings.Join(loweredEventName, "_"))
+}
+
+// getArrayObjectInnerFields handles Drop Entitlement Grant Event that is defined
+// in the reference document as several fields in the first table, then <p>...</p> with
+// a description and then another table with inner fields description.
+func getArrayObjectInnerFields(tr *html.Node) []eventsubEventField {
+	var table *html.Node
+
+	for it := tr; it != nil; it = it.Parent {
+		if crawler.IsElementNode(it) && it.Data == "table" {
+			table = it
+			break
+		}
+	}
+
+	logrus.Debugf("%#v", table)
+	// skip to the second table
+	for it := table.NextSibling; it != nil; it = it.NextSibling {
+		if crawler.IsElementNode(it) && it.Data == "table" {
+			table = it
+			break
+		}
+	}
+
+	for it := table.FirstChild; it != nil; it = it.NextSibling {
+		if crawler.IsElementNode(it) && it.Data == "tbody" {
+			tr = it.FirstChild.NextSibling
+			break
+		}
+	}
+
+	var fields []eventsubEventField
+
+	for it := tr; it != nil; it = it.NextSibling {
+		if !crawler.IsElementNode(it) {
+			continue
+		}
+
+		field, fieldPosition := getEventsubFieldFromTable(it)
+
+		if fieldPosition == mainField {
+			fields = append(fields, field)
+		} else {
+			l := len(fields)
+			fields[l-1].InnerFields = append(fields[l-1].InnerFields, field)
+		}
+	}
+
+	return fields
+}
+
+func getEventsubFieldFromTable(tr *html.Node) (eventsubEventField, fieldTypeRelation) {
+	var (
+		fieldName        string
+		fieldTy          string
+		fieldDescription string
+		fieldRelation    fieldTypeRelation
+		fieldEvent       eventsubEventField
+	)
+	position := namePosition
+
+	for td := tr.FirstChild; td != nil; td = td.NextSibling {
+		if !crawler.IsElementNode(td) {
+			continue
+		}
+
+		innerTag := td.FirstChild
+
+		if innerTag == nil {
+			logrus.Fatalf("Invalid inner tag for %+v", td)
+		}
+
+		value := getElementValue(innerTag)
+		relation := getFieldTypeRelation(value)
+		value = replaceHTMLSpaces(value)
+
+		switch position {
+		case namePosition:
+			fieldName = value
+			fieldRelation = relation
+		case typePosition:
+			fieldTy = strings.ToLower(value)
+		case descriptionPosition:
+			fieldDescription = value
+		}
+
+		position = getNextPosition(position)
+
+		if position == done {
+			fieldEvent = newEventsubEventField(fieldName, fieldTy, fieldDescription)
+			logrus.Tracef("Resulted field: %#v", fieldEvent)
+			break
+		}
+	}
+
+	if fieldTy == "array" {
+		fieldEvent.InnerFields = getArrayObjectInnerFields(tr)
+	}
+
+	return fieldEvent, fieldRelation
 }
