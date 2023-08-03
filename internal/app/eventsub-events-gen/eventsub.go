@@ -66,6 +66,15 @@ func (e *eventsubEvent) updateTypeToGoAcceptable() {
 	convertToGoTypes(e.Name, e.Fields)
 }
 
+func (e *eventsubEvent) addEventField(field *eventsubEventField) {
+	e.Fields = append(e.Fields, *field)
+}
+
+func (e *eventsubEvent) addInnerEventFieldToLastField(field *eventsubEventField) {
+	l := len(e.Fields)
+	e.Fields[l-1].InnerFields = append(e.Fields[l-1].InnerFields, *field)
+}
+
 func descriptionToComment(events []eventsubEventField) {
 	for i := range events {
 		events[i].Description = strings.Split(events[i].Description, ".")[0] + "."
