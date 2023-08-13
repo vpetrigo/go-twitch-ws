@@ -1,0 +1,26 @@
+{{ define "EventsubFields" }}
+    type {{ .Type }} struct {
+        {{ range .InnerFields }}{{ .FieldName }} {{ .Type }} `json:"{{ .Name }}"` // {{ .Description }}
+        {{ end -}}
+    }
+
+    {{ range .InnerFields }}
+        {{ if .InnerFields }}
+        {{ template "EventsubFields" . }}
+        {{ end }}
+    {{ end }}
+{{ end }}
+package eventsub
+
+type {{ .Name }} struct {
+    {{ range .Fields }}{{ .FieldName }} {{ .Type }} `json:"{{ .Name }}"` // {{ .Description }}
+    {{ end -}}
+}
+
+{{ range .Fields }}
+    {{ if .InnerFields }}
+    {{ template "EventsubFields" . }}
+    {{ end }}
+{{ end }}
+
+type {{ .Name }}Condition struct {}
