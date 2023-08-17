@@ -51,6 +51,23 @@ const (
 	innerField
 )
 
+type eventsubFieldType int
+
+const (
+	plainType eventsubFieldType = iota
+	compositeType
+)
+
+type tableRowProcessor interface {
+	RowHandler(tableRow *html.Node)
+}
+
+type tableRowProcessWithFn func(*html.Node)
+
+func (t tableRowProcessWithFn) RowHandler(tableRow *html.Node) {
+	t(tableRow)
+}
+
 func init() {
 	logrus.SetFormatter(&logrus.TextFormatter{
 		ForceColors: true,
@@ -80,13 +97,6 @@ func getEvents(resp *html.Node) []eventsubEvent {
 }
 
 func (e *eventsubEventCrawler) Crawl(node *html.Node) {
-	if crawler.IsElementNode(node) && e.state != endSearch {
-		if node.Data == "h3" {
-			text := node.FirstChild.Data
-			logrus.Tracef("Event found: %s - state: %d", text, e.state)
-		}
-	}
-
 	if !crawler.IsElementNode(node) || e.state == endSearch {
 		return
 	}
@@ -170,18 +180,17 @@ func (e *eventsubEventCrawler) checkTableBodyStart(node *html.Node) {
 }
 
 func (e *eventsubEventCrawler) parseEventTable(node *html.Node) {
-	for tr := node; tr != nil; tr = tr.NextSibling {
-		if crawler.IsElementNode(tr) && tr.Data == "tr" {
-			field, fieldType := getEventsubFieldFromTable(tr)
+	processor := func(tr *html.Node) {
+		field, fieldType := getEventsubFieldFromTable(tr)
 
-			if fieldType == mainField {
-				e.tempEvent.addEventField(&field)
-			} else {
-				e.tempEvent.addInnerEventFieldToLastField(&field)
-			}
+		if fieldType == mainField {
+			e.tempEvent.addEventField(&field)
+		} else {
+			e.tempEvent.addInnerEventFieldToLastField(&field)
 		}
 	}
 
+	tableRawTraverser(node, tableRowProcessWithFn(processor))
 	e.events = append(e.events, e.tempEvent)
 	e.tempEvent.Fields = nil
 	e.state = eventHeaderSearch
@@ -219,6 +228,20 @@ func getFieldTypeRelation(value string) fieldTypeRelation {
 	return fieldRelation
 }
 
+func getFieldTypeDescriptor(node *html.Node) eventsubFieldType {
+	for it := node; it != nil; it = it.NextSibling {
+		if crawler.IsElementNode(it) && it.Data == "a" {
+			for _, a := range it.Attr {
+				if a.Key == "href" {
+					return compositeType
+				}
+			}
+		}
+	}
+
+	return plainType
+}
+
 func replaceHTMLSpaces(value string) string {
 	return strings.ReplaceAll(value, "\u00a0", "")
 }
@@ -236,70 +259,17 @@ func getNextPosition(position processPosition) processPosition {
 	return position
 }
 
-func standardEventTableValidator(tableHeaderNode *html.Node) bool {
-	validHeading := []string{
-		"Name",
-		"Type",
-		"Description",
-	}
-
-	return validateTableHeading(tableHeaderNode, validHeading)
-}
-
-func charityEventTableValidator(tableHeaderNode *html.Node) bool {
-	validHeading := []string{
-		"Field",
-		"Type",
-		"Description",
-	}
-
-	return validateTableHeading(tableHeaderNode, validHeading)
-}
-
-func validateTableHeading(tr *html.Node, validHeading []string) bool {
-	validationSliceLen := len(validHeading)
-	out := make([]string, 0, validationSliceLen)
-
-	for th := tr.FirstChild; th != nil; th = th.NextSibling {
-		if !crawler.IsElementNode(th) {
-			continue
-		}
-
-		out = append(out, th.FirstChild.Data)
-	}
-
-	logrus.Tracef("expected: %v, actual: %v", validHeading, out)
-
-	if validationSliceLen != len(out) {
-		return false
-	}
-
-	for i, v := range validHeading {
-		if v != out[i] {
-			return false
-		}
-	}
-
-	return true
-}
-
 func generateEventsubFiles(events []eventsubEvent) error {
 	const defaultFileAccess = 0o644
-	const eventsubFileContentTemplate = `package eventsub
 
-type {{.Name}} struct {
-{{range .Fields}}{{.FieldName}} {{.Type}} ` + "`json:\"{{.Name}}\"` // {{.Description}}\n" + `{{end}}}
+	templatePath := path.Join("internal", "app", "eventsub-events-gen", "eventsub.tmpl")
+	t, err := template.ParseFiles(templatePath)
 
-{{range .Fields}}{{if .InnerFields}}type {{.Type}} struct {
-{{range .InnerFields}}{{.FieldName}} {{.Type}} ` + "`json:\"{{.Name}}\"` // {{.Description}}\n" + `{{end}}}
+	if err != nil {
+		logrus.Fatal(err)
+	}
 
-{{end}}{{end}}
-
-type {{.Name}}Condition struct {}
-`
-
-	t := template.Must(template.New("eventsubFileContent").Parse(eventsubFileContentTemplate))
-	outdir := path.Join("pkg", "eventsub")
+	outDir := path.Join("pkg", "eventsub")
 
 	for i, e := range events {
 		fileName := getFileName(e.SpaceSeparatedName)
@@ -316,7 +286,7 @@ type {{.Name}}Condition struct {}
 		}
 
 		b, _ := format.Source(buf.Bytes())
-		outFile := path.Join(outdir, fileName)
+		outFile := path.Join(outDir, fileName)
 		_ = os.WriteFile(outFile, b, defaultFileAccess)
 	}
 
@@ -348,7 +318,6 @@ func getArrayObjectInnerFields(tr *html.Node) []eventsubEventField {
 		}
 	}
 
-	logrus.Debugf("%#v", table)
 	// skip to the second table
 	for it := table.NextSibling; it != nil; it = it.NextSibling {
 		if crawler.IsElementNode(it) && it.Data == "table" {
@@ -386,15 +355,16 @@ func getArrayObjectInnerFields(tr *html.Node) []eventsubEventField {
 
 func getEventsubFieldFromTable(tr *html.Node) (eventsubEventField, fieldTypeRelation) {
 	var (
-		fieldName        string
-		fieldTy          string
-		fieldDescription string
-		fieldRelation    fieldTypeRelation
-		fieldEvent       eventsubEventField
+		fieldName         string
+		fieldTy           string
+		fieldDescription  string
+		fieldRelation     fieldTypeRelation
+		fieldEvent        eventsubEventField
+		fieldTyDescriptor eventsubFieldType
 	)
 	position := namePosition
 
-	for td := tr.FirstChild; td != nil; td = td.NextSibling {
+	for td := tr.FirstChild; position != done && td != nil; td = td.NextSibling {
 		if !crawler.IsElementNode(td) {
 			continue
 		}
@@ -415,6 +385,7 @@ func getEventsubFieldFromTable(tr *html.Node) (eventsubEventField, fieldTypeRela
 			fieldRelation = relation
 		case typePosition:
 			fieldTy = strings.ToLower(value)
+			fieldTyDescriptor = getFieldTypeDescriptor(innerTag)
 		case descriptionPosition:
 			fieldDescription = value
 		}
@@ -424,13 +395,22 @@ func getEventsubFieldFromTable(tr *html.Node) (eventsubEventField, fieldTypeRela
 		if position == done {
 			fieldEvent = newEventsubEventField(fieldName, fieldTy, fieldDescription)
 			logrus.Tracef("Resulted field: %#v", fieldEvent)
-			break
 		}
 	}
 
-	if fieldTy == "array" {
+	if fieldTyDescriptor == compositeType {
+		fieldEvent.InnerFields = getCompositeType(tr, fieldName)
+	} else if fieldTy == "array" {
 		fieldEvent.InnerFields = getArrayObjectInnerFields(tr)
 	}
 
 	return fieldEvent, fieldRelation
+}
+
+func tableRawTraverser(tableRow *html.Node, processor tableRowProcessor) {
+	for tr := tableRow; tr != nil; tr = tr.NextSibling {
+		if crawler.IsElementNode(tr) && tr.Data == "tr" {
+			processor.RowHandler(tr)
+		}
+	}
 }

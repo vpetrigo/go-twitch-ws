@@ -119,17 +119,16 @@ func (c *compositeTypeCrawler) compositeTypeTableBodySearchHandler(node *html.No
 }
 
 func (c *compositeTypeCrawler) compositeTypeTableParseHandler(node *html.Node) {
-	for tr := node; tr != nil; tr = tr.NextSibling {
-		if crawler.IsElementNode(tr) && tr.Data == "tr" {
-			field, fieldType := getEventsubFieldFromTable(tr)
+	processor := func(tableRow *html.Node) {
+		field, fieldType := getEventsubFieldFromTable(tableRow)
 
-			if fieldType == mainField {
-				c.Fields = append(c.Fields, field)
-			} else {
-				panic("unexpected inner field in the composite type")
-			}
+		if fieldType == mainField {
+			c.Fields = append(c.Fields, field)
+		} else {
+			panic("unexpected inner field in the composite type")
 		}
 	}
 
+	tableRawTraverser(node, tableRowProcessWithFn(processor))
 	c.state = compositeEndSearch
 }
