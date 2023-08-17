@@ -38,8 +38,15 @@ func newEventsubEventField(name, ty, description string) eventsubEventField {
 		splitName[j] = titleCase.String(splitName[j])
 	}
 
+	fieldName := strings.Join(splitName, "")
+	replacePatterns := []struct{ Pattern, Replace string }{{"Id", "ID"}, {"Url", "URL"}}
+
+	for _, v := range replacePatterns {
+		fieldName = strings.ReplaceAll(fieldName, v.Pattern, v.Replace)
+	}
+
 	return eventsubEventField{
-		FieldName:   strings.ReplaceAll(strings.Join(splitName, ""), "Id", "ID"),
+		FieldName:   fieldName,
 		Name:        name,
 		Type:        ty,
 		Description: description,
@@ -88,7 +95,7 @@ func descriptionToComment(events []eventsubEventField) {
 func convertToGoTypes(prefix string, events []eventsubEventField) {
 	for i := range events {
 		switch events[i].Type {
-		case "integer":
+		case "integer", "int":
 			events[i].Type = "int"
 		case "boolean":
 			events[i].Type = "bool"
