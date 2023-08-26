@@ -13,6 +13,9 @@ type ChannelGuestStarGuestUpdateEvent struct {
 	GuestUserLogin       string `json:"guest_user_login"`       // The guest login.
 	SlotID               string `json:"slot_id"`                // The ID of the slot assignment the guest is assigned to.
 	State                string `json:"state"`                  // The current state of the user after the update has taken place.
+	HostVideoEnabled     bool   `json:"host_video_enabled"`     // Flag that signals whether the host is allowing the slot’s video to be seen by participants within the session.
+	HostAudioEnabled     bool   `json:"host_audio_enabled"`     // Flag that signals whether the host is allowing the slot’s audio to be heard by participants within the session.
+	HostVolume           int    `json:"host_volume"`            // Value between 0-100 that represents the slot’s audio level as heard by participants within the session.
 }
 
 type ChannelGuestStarGuestUpdateEventCondition struct{}

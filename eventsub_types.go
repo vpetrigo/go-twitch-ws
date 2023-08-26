@@ -25,7 +25,6 @@ var (
 		"channel.guest_star_session.begin":                       {Version: "beta", MsgType: &eventsub.ChannelGuestStarSessionBeginEvent{}, ConditionType: &eventsub.ChannelGuestStarSessionBeginEventCondition{}},
 		"channel.guest_star_session.end":                         {Version: "beta", MsgType: &eventsub.ChannelGuestStarSessionEndEvent{}, ConditionType: &eventsub.ChannelGuestStarSessionEndEventCondition{}},
 		"channel.guest_star_guest.update":                        {Version: "beta", MsgType: &eventsub.ChannelGuestStarGuestUpdateEvent{}, ConditionType: &eventsub.ChannelGuestStarGuestUpdateEventCondition{}},
-		"channel.guest_star_slot.update":                         {Version: "beta", MsgType: &eventsub.ChannelGuestStarSlotUpdateEvent{}, ConditionType: &eventsub.ChannelGuestStarSlotUpdateEventCondition{}},
 		"channel.guest_star_settings.update":                     {Version: "beta", MsgType: &eventsub.ChannelGuestStarSettingsUpdateEvent{}, ConditionType: &eventsub.ChannelGuestStarSettingsUpdateEventCondition{}},
 		"channel.channel_points_custom_reward.add":               {Version: "1", MsgType: &eventsub.ChannelPointsCustomRewardAddEvent{}, ConditionType: &eventsub.ChannelPointsCustomRewardAddEventCondition{}},
 		"channel.channel_points_custom_reward.update":            {Version: "1", MsgType: &eventsub.ChannelPointsCustomRewardUpdateEvent{}, ConditionType: &eventsub.ChannelPointsCustomRewardUpdateEventCondition{}},

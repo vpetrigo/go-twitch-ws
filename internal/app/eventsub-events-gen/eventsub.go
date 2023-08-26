@@ -23,6 +23,10 @@ type eventsubEventField struct {
 	InnerFields []eventsubEventField
 }
 
+var complexTypes = map[string]struct {
+	Fields []eventsubEventField
+}{}
+
 func newEventsubEvent(name string) eventsubEvent {
 	return eventsubEvent{
 		Name:               strings.ReplaceAll(name, " ", ""),
@@ -38,8 +42,18 @@ func newEventsubEventField(name, ty, description string) eventsubEventField {
 		splitName[j] = titleCase.String(splitName[j])
 	}
 
+	fieldName := strings.Join(splitName, "")
+	replacePatterns := []struct{ Pattern, Replace string }{
+		{"Id", "ID"},
+		{"Url", "URL"},
+	}
+
+	for _, v := range replacePatterns {
+		fieldName = strings.ReplaceAll(fieldName, v.Pattern, v.Replace)
+	}
+
 	return eventsubEventField{
-		FieldName:   strings.ReplaceAll(strings.Join(splitName, ""), "Id", "ID"),
+		FieldName:   fieldName,
 		Name:        name,
 		Type:        ty,
 		Description: description,
@@ -88,7 +102,7 @@ func descriptionToComment(events []eventsubEventField) {
 func convertToGoTypes(prefix string, events []eventsubEventField) {
 	for i := range events {
 		switch events[i].Type {
-		case "integer":
+		case "integer", "int":
 			events[i].Type = "int"
 		case "boolean":
 			events[i].Type = "bool"
@@ -99,8 +113,17 @@ func convertToGoTypes(prefix string, events []eventsubEventField) {
 			if len(events[i].InnerFields) == 0 {
 				events[i].Type = "interface{}"
 			} else {
-				events[i].Type = firstLetterToLower(fmt.Sprintf("%s%s", prefix, events[i].FieldName))
+				if events[i].Type == "array" {
+					events[i].Type = firstLetterToLower(fmt.Sprintf("%s%s", prefix, events[i].FieldName))
+				} else {
+					events[i].Type = events[i].FieldName
+				}
+
 				convertToGoTypes(prefix, events[i].InnerFields)
+
+				if _, ok := complexTypes[events[i].Type]; !ok {
+					complexTypes[events[i].Type] = struct{ Fields []eventsubEventField }{events[i].InnerFields}
+				}
 			}
 		}
 	}
