@@ -1,0 +1,11 @@
+{{ define "EventsubFields" }}
+    {{ range .Fields }}{{ .FieldName }} {{ .Type }} `json:"{{ .Name }}"` // {{ .Description }}
+    {{ end -}}
+{{ end }}
+package eventsub
+
+{{ range $key, $value := . }}
+type {{ $key }} struct {
+    {{- template "EventsubFields" $value -}}
+}
+{{ end }}
