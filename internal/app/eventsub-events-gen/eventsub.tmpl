@@ -17,10 +17,4 @@ type {{ .Name }} struct {
     {{ end -}}
 }
 
-{{ range .Fields }}
-    {{ if .InnerFields }}
-    {{ template "EventsubFields" . }}
-    {{ end }}
-{{ end }}
-
 type {{ .Name }}Condition struct {}

@@ -23,6 +23,10 @@ type eventsubEventField struct {
 	InnerFields []eventsubEventField
 }
 
+var complexTypes = map[string]struct {
+	Fields []eventsubEventField
+}{}
+
 func newEventsubEvent(name string) eventsubEvent {
 	return eventsubEvent{
 		Name:               strings.ReplaceAll(name, " ", ""),
@@ -39,7 +43,10 @@ func newEventsubEventField(name, ty, description string) eventsubEventField {
 	}
 
 	fieldName := strings.Join(splitName, "")
-	replacePatterns := []struct{ Pattern, Replace string }{{"Id", "ID"}, {"Url", "URL"}}
+	replacePatterns := []struct{ Pattern, Replace string }{
+		{"Id", "ID"},
+		{"Url", "URL"},
+	}
 
 	for _, v := range replacePatterns {
 		fieldName = strings.ReplaceAll(fieldName, v.Pattern, v.Replace)
@@ -106,8 +113,17 @@ func convertToGoTypes(prefix string, events []eventsubEventField) {
 			if len(events[i].InnerFields) == 0 {
 				events[i].Type = "interface{}"
 			} else {
-				events[i].Type = firstLetterToLower(fmt.Sprintf("%s%s", prefix, events[i].FieldName))
+				if events[i].Type == "array" {
+					events[i].Type = firstLetterToLower(fmt.Sprintf("%s%s", prefix, events[i].FieldName))
+				} else {
+					events[i].Type = events[i].FieldName
+				}
+
 				convertToGoTypes(prefix, events[i].InnerFields)
+
+				if _, ok := complexTypes[events[i].Type]; !ok {
+					complexTypes[events[i].Type] = struct{ Fields []eventsubEventField }{events[i].InnerFields}
+				}
 			}
 		}
 	}

@@ -261,15 +261,58 @@ func getNextPosition(position processPosition) processPosition {
 
 func generateEventsubFiles(events []eventsubEvent) error {
 	const defaultFileAccess = 0o644
+	outDir := path.Join("pkg", "eventsub")
 
+	err := writeMainTypes(events, outDir, defaultFileAccess)
+
+	if err != nil {
+		return err
+	}
+
+	return writeComplexTypes(outDir, defaultFileAccess)
+}
+
+func writeComplexTypes(outDir string, defaultFileAccess os.FileMode) error {
+	var buf bytes.Buffer
+	outFile := path.Join(outDir, "supplementary.go")
+	anotherTemplate := path.Join("internal", "app", "eventsub-events-gen", "inner.tmpl")
+	t, err := template.ParseFiles(anotherTemplate)
+
+	if err != nil {
+		logrus.Error(err)
+
+		return err
+	}
+
+	err = t.Execute(&buf, complexTypes)
+
+	if err != nil {
+		logrus.Error(err)
+
+		return err
+	}
+
+	b, _ := format.Source(buf.Bytes())
+	err = os.WriteFile(outFile, b, defaultFileAccess)
+
+	if err != nil {
+		logrus.Error(err)
+
+		return err
+	}
+
+	return nil
+}
+
+func writeMainTypes(events []eventsubEvent, outDir string, defaultFileAccess os.FileMode) error {
 	templatePath := path.Join("internal", "app", "eventsub-events-gen", "eventsub.tmpl")
 	t, err := template.ParseFiles(templatePath)
 
 	if err != nil {
-		logrus.Fatal(err)
-	}
+		logrus.Error(err)
 
-	outDir := path.Join("pkg", "eventsub")
+		return err
+	}
 
 	for i, e := range events {
 		fileName := getFileName(e.SpaceSeparatedName)
@@ -282,7 +325,9 @@ func generateEventsubFiles(events []eventsubEvent) error {
 		err := t.Execute(&buf, e)
 
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Error(err)
+
+			return err
 		}
 
 		b, _ := format.Source(buf.Bytes())
