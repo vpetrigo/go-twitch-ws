@@ -11,7 +11,7 @@ import (
 type testCrawler func(node *html.Node)
 
 func TestElementTraversal(t *testing.T) {
-	const htm = `<!DOCTYPE html>
+	const testHTML = `<!DOCTYPE html>
 <html>
 <head>
 	<title></title>
@@ -23,7 +23,7 @@ func TestElementTraversal(t *testing.T) {
 </html>`
 	expectedOrder := []string{"html", "head", "title", "body", "p"}
 	actualOrder := make([]string, 0, 5)
-	doc, _ := html.Parse(strings.NewReader(htm))
+	doc, _ := html.Parse(strings.NewReader(testHTML))
 
 	ElementTraversal(doc, newTestCrawler(func(node *html.Node) {
 		if IsElementNode(node) {

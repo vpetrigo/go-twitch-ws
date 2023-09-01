@@ -444,7 +444,7 @@ func getEventsubFieldFromTable(tr *html.Node) (eventsubEventField, fieldTypeRela
 	}
 
 	if fieldTyDescriptor == compositeType {
-		fieldEvent.InnerFields = getCompositeType(tr, fieldName)
+		fieldEvent.InnerFields = getCompositeType(tr, fieldTy)
 	} else if fieldTy == "array" {
 		fieldEvent.InnerFields = getArrayObjectInnerFields(tr)
 	}

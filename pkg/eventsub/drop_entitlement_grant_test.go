@@ -1,7 +1,6 @@
 package eventsub
 
 import (
-	"encoding/json"
 	"testing"
 )
 
@@ -37,15 +36,5 @@ func TestDropEntitlementGrantUnmarshal(t *testing.T) {
 		},
 	}
 
-	var dropEntitlementGrant DropEntitlementGrantEvent
-	err := json.Unmarshal([]byte(input), &dropEntitlementGrant)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if dropEntitlementGrant != expected {
-		t.Fatalf("unmarshalled structure mismatched with expected:\nA: %#v\nE: %#v",
-			dropEntitlementGrant, expected)
-	}
+	validateInput(t, input, expected)
 }
