@@ -35,14 +35,7 @@ func newEventsubEvent(name string) eventsubEvent {
 }
 
 func newEventsubEventField(name, ty, description string) eventsubEventField {
-	titleCase := cases.Title(language.AmericanEnglish)
-	splitName := strings.Split(name, "_")
-
-	for j := range splitName {
-		splitName[j] = titleCase.String(splitName[j])
-	}
-
-	fieldName := strings.Join(splitName, "")
+	fieldName := convertUnderscoreSeparated(name)
 	replacePatterns := []struct{ Pattern, Replace string }{
 		{"Id", "ID"},
 		{"Url", "URL"},
@@ -116,7 +109,11 @@ func convertToGoTypes(prefix string, events []eventsubEventField) {
 				if events[i].Type == "array" {
 					events[i].Type = firstLetterToLower(fmt.Sprintf("%s%s", prefix, events[i].FieldName))
 				} else {
-					events[i].Type = events[i].FieldName
+					if events[i].Type != "object" {
+						events[i].Type = convertUnderscoreSeparated(events[i].Type)
+					} else {
+						events[i].Type = events[i].FieldName
+					}
 				}
 
 				convertToGoTypes(prefix, events[i].InnerFields)
@@ -138,4 +135,15 @@ func firstLetterToLower(s string) string {
 	r[0] = unicode.ToLower(r[0])
 
 	return string(r)
+}
+
+func convertUnderscoreSeparated(input string) string {
+	titleCase := cases.Title(language.AmericanEnglish)
+	splitted := strings.Split(input, "_")
+
+	for j := range splitted {
+		splitted[j] = titleCase.String(splitted[j])
+	}
+
+	return strings.Join(splitted, "")
 }

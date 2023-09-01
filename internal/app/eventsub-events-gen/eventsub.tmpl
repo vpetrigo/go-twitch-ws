@@ -13,7 +13,7 @@
 package eventsub
 
 type {{ .Name }} struct {
-    {{ range .Fields }}{{ .FieldName }} {{ .Type }} `json:"{{ .Name }}"` // {{ .Description }}
+    {{ range .Fields }}{{ .FieldName }} {{ if or (eq .Type "Outcomes") (eq .Type "Choices") (eq .Type "TopContributions") }}[]{{ .Type }}{{ else }}{{ .Type }}{{ end }} `json:"{{ .Name }}"` // {{ .Description }}
     {{ end -}}
 }
 

@@ -1,5 +1,5 @@
 {{ define "EventsubFields" }}
-    {{ range .Fields }}{{ .FieldName }} {{ .Type }} `json:"{{ .Name }}"` // {{ .Description }}
+    {{ range .Fields }}{{ .FieldName }} {{ if or (eq .Type "Message") (eq .Type "Emotes") (eq .Type "TopPredictors")}}[]{{ .Type }}{{ else }}{{ .Type }}{{ end }} `json:"{{ .Name }}"` // {{ .Description }}
     {{ end -}}
 {{ end }}
 package eventsub

@@ -331,6 +331,7 @@ func writeMainTypes(events []eventsubEvent, outDir string, defaultFileAccess os.
 		}
 
 		b, _ := format.Source(buf.Bytes())
+		// logrus.Debugf("%s", b)
 		outFile := path.Join(outDir, fileName)
 		_ = os.WriteFile(outFile, b, defaultFileAccess)
 	}
@@ -444,7 +445,7 @@ func getEventsubFieldFromTable(tr *html.Node) (eventsubEventField, fieldTypeRela
 	}
 
 	if fieldTyDescriptor == compositeType {
-		fieldEvent.InnerFields = getCompositeType(tr, fieldName)
+		fieldEvent.InnerFields = getCompositeType(tr, fieldTy)
 	} else if fieldTy == "array" {
 		fieldEvent.InnerFields = getArrayObjectInnerFields(tr)
 	}
