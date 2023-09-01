@@ -78,12 +78,12 @@ func TestChannelPoolEnd(t *testing.T) {
 	}
 
 	idEq := expected.ID == actual.ID
-	broadcasterUserIdEq := expected.BroadcasterUserID == actual.BroadcasterUserID
+	broadcasterUserIDEq := expected.BroadcasterUserID == actual.BroadcasterUserID
 	broadcasterUserNameEq := expected.BroadcasterUserName == actual.BroadcasterUserName
 	broadcasterUserLoginEq := expected.BroadcasterUserLogin == actual.BroadcasterUserLogin
 	titleEq := expected.Title == actual.Title
 	bitsVotingEq := expected.BitsVoting == actual.BitsVoting
-	choicesEq := len(expected.Choices) == len(expected.Choices)
+	choicesEq := len(expected.Choices) == len(actual.Choices)
 
 	if choicesEq {
 		for i, v := range expected.Choices {
@@ -99,7 +99,7 @@ func TestChannelPoolEnd(t *testing.T) {
 	endedAtEq := expected.EndedAt == actual.EndedAt
 
 	if !(idEq &&
-		broadcasterUserIdEq &&
+		broadcasterUserIDEq &&
 		broadcasterUserNameEq &&
 		broadcasterUserLoginEq &&
 		titleEq &&

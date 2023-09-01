@@ -66,17 +66,17 @@ type MaxPerUserPerStream struct {
 }
 
 type Message struct {
-	Text   string `json:"text"`   // The text of the resubscription chat message.
-	Emotes Emotes `json:"emotes"` // An array that includes the emote ID and start and end positions for where the emote appears in the text.
+	Text   string   `json:"text"`   // The text of the resubscription chat message.
+	Emotes []Emotes `json:"emotes"` // An array that includes the emote ID and start and end positions for where the emote appears in the text.
 }
 
 type Outcomes struct {
-	ID            string        `json:"id"`             // The outcome ID.
-	Title         string        `json:"title"`          // The outcome title.
-	Color         string        `json:"color"`          // The color for the outcome.
-	Users         int           `json:"users"`          // The number of users who used Channel Points on this outcome.
-	ChannelPoints int           `json:"channel_points"` // The total number of Channel Points used on this outcome.
-	TopPredictors TopPredictors `json:"top_predictors"` // An array of users who used the most Channel Points on this outcome.
+	ID            string          `json:"id"`             // The outcome ID.
+	Title         string          `json:"title"`          // The outcome title.
+	Color         string          `json:"color"`          // The color for the outcome.
+	Users         int             `json:"users"`          // The number of users who used Channel Points on this outcome.
+	ChannelPoints int             `json:"channel_points"` // The total number of Channel Points used on this outcome.
+	TopPredictors []TopPredictors `json:"top_predictors"` // An array of users who used the most Channel Points on this outcome.
 }
 
 type Product struct {
