@@ -331,7 +331,6 @@ func writeMainTypes(events []eventsubEvent, outDir string, defaultFileAccess os.
 		}
 
 		b, _ := format.Source(buf.Bytes())
-		// logrus.Debugf("%s", b)
 		outFile := path.Join(outDir, fileName)
 		_ = os.WriteFile(outFile, b, defaultFileAccess)
 	}
