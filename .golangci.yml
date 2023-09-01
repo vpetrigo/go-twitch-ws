@@ -1,5 +1,5 @@
 run:
-  timeout: 30s
+  timeout: 5m
 
 issues:
   max-issues-per-linter: 0
