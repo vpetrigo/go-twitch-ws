@@ -55,7 +55,7 @@ func TestChannelPointsCustomRewardUpdate(t *testing.T) {
 		Prompt:                            "reward prompt",
 		IsUserInputRequired:               true,
 		ShouldRedemptionsSkipRequestQueue: false,
-		CooldownExpiresAt:                 "2019-11-16T10:11:12.123Z",
+		CooldownExpiresAt:                 "2019-11-16T10:11:12.634234626Z",
 		RedemptionsRedeemedCurrentStream:  123,
 		MaxPerStream: MaxPerStream{
 			IsEnabled: true,

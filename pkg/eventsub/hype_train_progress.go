@@ -15,5 +15,4 @@ type HypeTrainProgressEvent struct {
 	ExpiresAt            string             `json:"expires_at"`             // The time when the Hype Train expires.
 }
 
-// TODO: TopContributions should be array in the implementation
 type HypeTrainProgressEventCondition struct{}

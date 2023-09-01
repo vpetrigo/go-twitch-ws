@@ -14,6 +14,4 @@ type ChannelPollEndEvent struct {
 	EndedAt              string              `json:"ended_at"`               // The time the poll ended.
 }
 
-// TODO: Choices should be array type.
-
 type ChannelPollEndEventCondition struct{}
