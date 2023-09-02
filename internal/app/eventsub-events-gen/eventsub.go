@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -18,9 +19,10 @@ type eventsubEvent struct {
 type eventsubEventField struct {
 	FieldName   string
 	Name        string
-	Type        string
+	Type        string // Type to be used as a struct name (if required)
+	InnerType   string // InnerType represents a type name to be used inside a struct as a field type
 	Description string
-	InnerFields []eventsubEventField
+	InnerFields []eventsubEventField // Inner fields (if any) for complex types
 }
 
 var complexTypes = map[string]struct {
@@ -96,31 +98,68 @@ func convertToGoTypes(prefix string, events []eventsubEventField) {
 	for i := range events {
 		switch events[i].Type {
 		case "integer", "int":
-			events[i].Type = "int"
+			events[i].InnerType = "int"
 		case "boolean":
-			events[i].Type = "bool"
+			events[i].InnerType = "bool"
 		case "string":
+			events[i].InnerType = "string"
 		case "string[]":
-			events[i].Type = "[]string"
+			events[i].InnerType = "[]string"
 		default:
 			if len(events[i].InnerFields) == 0 {
-				events[i].Type = "interface{}"
+				events[i].InnerType = "interface{}"
 			} else {
-				if events[i].Type == "array" {
-					events[i].Type = firstLetterToLower(fmt.Sprintf("%s%s", prefix, events[i].FieldName))
-				} else {
-					if events[i].Type != "object" {
-						events[i].Type = convertUnderscoreSeparated(events[i].Type)
-					} else {
-						events[i].Type = events[i].FieldName
-					}
-				}
+				convertComplexTypesToGoTypes(prefix, &events[i])
+				// if events[i].Type == "array" {
+				// 	events[i].InnerType = firstLetterToLower(fmt.Sprintf("%s%s", prefix, events[i].FieldName))
+				// 	events[i].Type = events[i].InnerType
+				// }
+				// else {
+				// 	if events[i].Type != "object" {
+				// 		events[i].Type = convertUnderscoreSeparated(events[i].Type)
+				// 	} else {
+				// 		events[i].Type = events[i].FieldName
+				// 	}
+				// }
+				//
+				// convertToGoTypes(prefix, events[i].InnerFields)
+				//
+				// if _, ok := complexTypes[events[i].Type]; !ok {
+				// 	complexTypes[events[i].Type] = struct{ Fields []eventsubEventField }{events[i].InnerFields}
+				// }
+			}
+		}
+	}
+}
 
-				convertToGoTypes(prefix, events[i].InnerFields)
+func convertComplexTypesToGoTypes(prefix string, event *eventsubEventField) {
+	if len(event.InnerFields) == 0 {
+		event.InnerType = "interface{}"
+	} else {
+		switch event.Type {
+		case "array":
+			tyName := firstLetterToLower(fmt.Sprintf("%s%s", prefix, event.FieldName))
+			event.InnerType = tyName
+			event.Type = tyName
+		case "object":
+			event.InnerType = event.FieldName
+			event.Type = event.FieldName
+		default:
+			arrayTypes := []string{"top_contributions"}
+			tyName := convertUnderscoreSeparated(event.Type)
+			event.Type = tyName
+			event.InnerType = tyName
 
-				if _, ok := complexTypes[events[i].Type]; !ok {
-					complexTypes[events[i].Type] = struct{ Fields []eventsubEventField }{events[i].InnerFields}
-				}
+			if strings.Contains(event.Description, "array") || slices.Contains(arrayTypes, event.Name) {
+				event.InnerType = fmt.Sprintf("[]%s", event.InnerType)
+			}
+		}
+
+		convertToGoTypes(prefix, event.InnerFields)
+
+		if _, ok := complexTypes[event.Type]; !ok {
+			complexTypes[event.Type] = struct{ Fields []eventsubEventField }{
+				event.InnerFields,
 			}
 		}
 	}
@@ -139,11 +178,11 @@ func firstLetterToLower(s string) string {
 
 func convertUnderscoreSeparated(input string) string {
 	titleCase := cases.Title(language.AmericanEnglish)
-	splitted := strings.Split(input, "_")
+	split := strings.Split(input, "_")
 
-	for j := range splitted {
-		splitted[j] = titleCase.String(splitted[j])
+	for j := range split {
+		split[j] = titleCase.String(split[j])
 	}
 
-	return strings.Join(splitted, "")
+	return strings.Join(split, "")
 }
