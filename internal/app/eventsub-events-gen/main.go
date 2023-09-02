@@ -127,17 +127,27 @@ func (e *eventsubEventCrawler) checkMainEventHeader(node *html.Node) {
 }
 
 func (e *eventsubEventCrawler) checkEventHeader(node *html.Node) {
-	if node.Data == "h3" {
-		headerText := strings.TrimSuffix(node.FirstChild.Data, "\n")
+	isEventHeader := node.Data == "h3"
+	isShoutOutHeader := node.Data == "h2" && strings.Contains(node.FirstChild.Data, "Shoutout")
+
+	if isEventHeader {
+		d := node.FirstChild.Data
+		headerText := strings.TrimSuffix(d, "\n")
 
 		if strings.HasSuffix(headerText, "Event") {
 			e.tempEvent = newEventsubEvent(headerText)
 			e.state = eventTableSearch
-			logrus.Tracef("Found: %s", node.FirstChild.Data)
+			logrus.Tracef("Found: %s", d)
 		} else {
 			logrus.Errorf("Event ends on %#v", node)
 			e.state = endSearch
 		}
+	} else if isShoutOutHeader {
+		d := node.FirstChild.Data
+		headerText := strings.TrimSuffix(d, "\n")
+		headerText = fmt.Sprintf("%s Event", headerText)
+		e.tempEvent = newEventsubEvent(headerText)
+		e.state = eventTableSearch
 	}
 }
 
