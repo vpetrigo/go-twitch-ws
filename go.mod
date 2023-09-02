@@ -1,6 +1,6 @@
 module github.com/vpetrigo/go-twitch-ws
 
-go 1.20
+go 1.21
 
 require (
 	github.com/jellydator/ttlcache/v3 v3.0.1
