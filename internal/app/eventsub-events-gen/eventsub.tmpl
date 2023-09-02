@@ -1,19 +1,7 @@
-{{ define "EventsubFields" }}
-    type {{ .Type }} struct {
-        {{ range .InnerFields }}{{ .FieldName }} {{ .Type }} `json:"{{ .Name }}"` // {{ .Description }}
-        {{ end -}}
-    }
-
-    {{ range .InnerFields }}
-        {{ if .InnerFields }}
-        {{ template "EventsubFields" . }}
-        {{ end }}
-    {{ end }}
-{{ end }}
 package eventsub
 
 type {{ .Name }} struct {
-    {{ range .Fields }}{{ .FieldName }} {{ if or (eq .Type "Outcomes") (eq .Type "Choices") (eq .Type "TopContributions") }}[]{{ .Type }}{{ else }}{{ .Type }}{{ end }} `json:"{{ .Name }}"` // {{ .Description }}
+    {{ range .Fields }}{{ .FieldName }} {{ .InnerType }} `json:"{{ .Name }}"` // {{ .Description }}
     {{ end -}}
 }
 
