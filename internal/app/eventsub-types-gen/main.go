@@ -233,6 +233,7 @@ func (e *eventsubCrawler) checkRowStart(node *html.Node) {
 
 					switch position {
 					case eventsubType:
+						logrus.Info(value)
 						evType.Type = value
 						position = eventsubName
 					case eventsubName:
@@ -297,6 +298,8 @@ func getOutputLines(eventsubTypes []subscriptionType) []outputLine {
 
 		if strings.HasPrefix(baseName, "Goal") {
 			baseName = "Goals"
+		} else if strings.HasPrefix(baseName, "Shield") {
+			baseName = "ShieldMode"
 		}
 
 		msgType := fmt.Sprintf("%sEvent", baseName)

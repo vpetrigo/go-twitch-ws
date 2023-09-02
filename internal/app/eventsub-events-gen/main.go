@@ -129,6 +129,7 @@ func (e *eventsubEventCrawler) checkMainEventHeader(node *html.Node) {
 func (e *eventsubEventCrawler) checkEventHeader(node *html.Node) {
 	isEventHeader := node.Data == "h3"
 	isShoutOutHeader := node.Data == "h2" && strings.Contains(node.FirstChild.Data, "Shoutout")
+	isShieldHeader := node.Data == "h2" && strings.Contains(node.FirstChild.Data, "Shield")
 
 	if isEventHeader {
 		d := node.FirstChild.Data
@@ -142,7 +143,7 @@ func (e *eventsubEventCrawler) checkEventHeader(node *html.Node) {
 			logrus.Errorf("Event ends on %#v", node)
 			e.state = endSearch
 		}
-	} else if isShoutOutHeader {
+	} else if isShoutOutHeader || isShieldHeader {
 		d := node.FirstChild.Data
 		headerText := strings.TrimSuffix(d, "\n")
 		headerText = fmt.Sprintf("%s Event", headerText)
