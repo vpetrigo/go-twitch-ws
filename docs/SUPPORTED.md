@@ -3,7 +3,7 @@
 - [x] Welcome Message
 - [x] Keepalive Message
 - [x] Notification Message
-- [ ] Revocation Message
+- [x] Revocation Message
 - [x] Reconnect Message
 
 # EventSub Notifications
@@ -49,10 +49,10 @@
 - [x] Channel Hype Train Begin
 - [x] Channel Hype Train Progress
 - [x] Channel Hype Train End
-- [ ] Channel Shield Mode Begin
-- [ ] Channel Shield Mode End
-- [ ] Channel Shoutout Create
-- [ ] Channel Shoutout Receive
+- [x] Channel Shield Mode Begin
+- [x] Channel Shield Mode End
+- [x] Channel Shoutout Create
+- [x] Channel Shoutout Receive
 - [x] Stream Online
 - [x] Stream Offline
 - [x] User Authorization Grant
