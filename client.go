@@ -411,7 +411,7 @@ func singleMessageHandler(c *Client) error {
 			onEvent(m, p)
 		}
 	} else {
-		log.Debugf("unknown Twitch message type: %s", m.MessageType)
+		log.Warnf("unknown Twitch message type: %s", m.MessageType)
 	}
 
 	return nil
@@ -533,24 +533,27 @@ func keepaliveMessageHandler(c *Client, metadata *Metadata, data []byte) (*Paylo
 }
 
 func notificationMessageHandler(c *Client, metadata *Metadata, data []byte) (*Payload, OnMessageEventFn, error) {
-	notification, err := unmarshalNotification(data)
+	payload, err := processNotification(data)
 
 	if err == nil {
 		c.lastHeardTimestamp, err = time.Parse(time.RFC3339Nano, metadata.MessageTimestamp)
 	}
 
-	payload := Payload{
-		Payload: notification,
-	}
-
 	log.Debugf("Notification: %+v", payload)
 
-	return &payload, c.onNotificationMessage, err
+	return payload, c.onNotificationMessage, err
 }
 
-func revocationMessageHandler(c *Client, _ *Metadata, _ []byte) (*Payload, OnMessageEventFn, error) {
-	log.Debug("Revocation received")
-	return nil, c.onRevocationMessage, nil
+func revocationMessageHandler(c *Client, metadata *Metadata, data []byte) (*Payload, OnMessageEventFn, error) {
+	payload, err := processNotification(data)
+
+	if err == nil {
+		c.lastHeardTimestamp, err = time.Parse(time.RFC3339Nano, metadata.MessageTimestamp)
+	}
+
+	log.Debugf("Revocation received: %#v", payload)
+
+	return payload, c.onRevocationMessage, err
 }
 
 func reconnectMessageHandler(c *Client, _ *Metadata, data []byte) (*Payload, OnMessageEventFn, error) {
@@ -655,4 +658,14 @@ func keepaliveIntervalCalc(keepaliveInterval int) time.Duration {
 	// consider reported keepalive timeout to be 80% value to be used
 	// to avoid disconnection due to small drift in message delivery
 	return time.Duration(keepaliveInterval*100/keepalivePercent) * time.Second
+}
+
+func processNotification(data []byte) (*Payload, error) {
+	notification, err := unmarshalNotification(data)
+
+	payload := Payload{
+		Payload: notification,
+	}
+
+	return &payload, err
 }
