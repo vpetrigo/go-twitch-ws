@@ -20,7 +20,8 @@ func main() {
 		twitchws.WithOnWelcome(onWelcomeEvent),
 		twitchws.WithOnNotification(onNotificationEvent),
 		twitchws.WithOnConnect(onConnect),
-		twitchws.WithOnDisconnect(onDisconnect))
+		twitchws.WithOnDisconnect(onDisconnect),
+		twitchws.WithOnRevocation(onRevocationEvent))
 
 	err := c.Connect()
 
@@ -55,6 +56,10 @@ func onNotificationEvent(_ *twitchws.Metadata, payload *twitchws.Payload) {
 		logrus.Debugf("Channel follow: %+v", event)
 		logrus.Debugf("Condition: %+v", condition)
 	}
+}
+
+func onRevocationEvent(_ *twitchws.Metadata, payload *twitchws.Payload) {
+	logrus.Debugf("Revocation: %+v", payload)
 }
 
 func onConnect() {
