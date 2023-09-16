@@ -5,7 +5,6 @@ import (
 	"testing"
 )
 
-// TODO: Update Message to have array of emotes.
 func TestChannelSubscriptionMessage(t *testing.T) {
 	input := `{
         "user_id": "1234",
