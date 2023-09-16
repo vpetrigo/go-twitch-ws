@@ -233,7 +233,6 @@ func (e *eventsubCrawler) checkRowStart(node *html.Node) {
 
 					switch position {
 					case eventsubType:
-						logrus.Info(value)
 						evType.Type = value
 						position = eventsubName
 					case eventsubName:
