@@ -17,7 +17,15 @@ var (
 		"Type",
 		"Description",
 	}
+	conditionTableHeader = []string{
+		"Name",
+		"Type",
+		"Required?",
+		"Description",
+	}
 )
+
+type withTableValidatorFn func(*html.Node) bool
 
 func standardEventTableValidator(tableHeaderNode *html.Node) bool {
 	return validateTableHeading(tableHeaderNode, standardTableHeader)
@@ -25,6 +33,10 @@ func standardEventTableValidator(tableHeaderNode *html.Node) bool {
 
 func charityEventTableValidator(tableHeaderNode *html.Node) bool {
 	return validateTableHeading(tableHeaderNode, charityTableHeader)
+}
+
+func conditionTableValidator(tableHeaderNode *html.Node) bool {
+	return validateTableHeading(tableHeaderNode, conditionTableHeader)
 }
 
 func validateTableHeading(tr *html.Node, validHeading []string) bool {
@@ -52,4 +64,27 @@ func validateTableHeading(tr *html.Node, validHeading []string) bool {
 	}
 
 	return true
+}
+
+func verifyHeader(node *html.Node, checker ...withTableValidatorFn) bool {
+	var tr *html.Node
+
+	for tr = node.FirstChild; tr != nil; tr = tr.NextSibling {
+		if tr.Data == "tr" {
+			break
+		}
+	}
+
+	if tr == nil {
+		logrus.Errorf("nil table row: %#v", node)
+		return false
+	}
+
+	for _, c := range checker {
+		if c(tr) {
+			return true
+		}
+	}
+
+	return false
 }
