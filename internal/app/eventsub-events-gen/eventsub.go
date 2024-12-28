@@ -99,7 +99,7 @@ func convertToGoTypes(prefix string, events []eventsubEventField) {
 		switch events[i].Type {
 		case "integer", "int":
 			events[i].InnerType = "int"
-		case "boolean":
+		case "boolean", "bool":
 			events[i].InnerType = "bool"
 		case "string":
 			events[i].InnerType = "string"
@@ -110,23 +110,6 @@ func convertToGoTypes(prefix string, events []eventsubEventField) {
 				events[i].InnerType = "interface{}"
 			} else {
 				convertComplexTypesToGoTypes(prefix, &events[i])
-				// if events[i].Type == "array" {
-				// 	events[i].InnerType = firstLetterToLower(fmt.Sprintf("%s%s", prefix, events[i].FieldName))
-				// 	events[i].Type = events[i].InnerType
-				// }
-				// else {
-				// 	if events[i].Type != "object" {
-				// 		events[i].Type = convertUnderscoreSeparated(events[i].Type)
-				// 	} else {
-				// 		events[i].Type = events[i].FieldName
-				// 	}
-				// }
-				//
-				// convertToGoTypes(prefix, events[i].InnerFields)
-				//
-				// if _, ok := complexTypes[events[i].Type]; !ok {
-				// 	complexTypes[events[i].Type] = struct{ Fields []eventsubEventField }{events[i].InnerFields}
-				// }
 			}
 		}
 	}
