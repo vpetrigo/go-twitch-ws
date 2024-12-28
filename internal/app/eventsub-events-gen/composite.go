@@ -3,9 +3,9 @@ package main
 import (
 	"strings"
 
-	"github.com/sirupsen/logrus"
-	"github.com/vpetrigo/go-twitch-ws/internal/pkg/crawler"
 	"golang.org/x/net/html"
+
+	"github.com/vpetrigo/go-twitch-ws/internal/pkg/crawler"
 )
 
 type compositeTypeParseState int
@@ -89,21 +89,7 @@ func (c *compositeTypeCrawler) compositeTypeTableSearchHandler(node *html.Node) 
 
 func (c *compositeTypeCrawler) compositeTypeTableVerifyHandler(node *html.Node) {
 	if node.Data == "thead" {
-		var tr *html.Node
-
-		for tr = node.FirstChild; tr != nil; tr = tr.NextSibling {
-			if tr.Data == "tr" {
-				break
-			}
-		}
-
-		if tr == nil {
-			logrus.Errorf("nil table row: %#v", node)
-			c.state = compositeEndSearch
-			return
-		}
-
-		if !standardEventTableValidator(tr) {
+		if !verifyHeader(node, standardEventTableValidator) {
 			c.state = compositeEndSearch
 			return
 		}
