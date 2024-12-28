@@ -4,5 +4,3 @@ type {{ .Name }} struct {
     {{ range .Fields }}{{ .FieldName }} {{ .InnerType }} `json:"{{ .Name }}"` // {{ .Description }}
     {{ end -}}
 }
-
-type {{ .Name }}Condition struct {}
