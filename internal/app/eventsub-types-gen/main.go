@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"go/format"
 	"log"
@@ -10,18 +11,15 @@ import (
 	"text/template"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/net/html"
+
 	"github.com/vpetrigo/go-twitch-ws/internal/pkg/crawler"
 	"github.com/vpetrigo/go-twitch-ws/internal/pkg/refdoc"
-	"golang.org/x/net/html"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 const eventsubTypesFile = "eventsub_types.go"
 const eventsubTypesRefURL = "https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/"
 const eventsubTypesFileTemplate = `package twitchws
-
-import "github.com/vpetrigo/go-twitch-ws/pkg/eventsub"
 
 type eventSubScope struct {
 	Version       string
@@ -30,23 +28,30 @@ type eventSubScope struct {
 }
 
 var (
-	eventSubTypes = map[string]eventSubScope{
-		{{range .}}"{{.Name}}": {Version: "{{.Version}}", MsgType: &eventsub.{{.MessageType}}{}, ConditionType: &eventsub.{{.ConditionType}}{}},
+	eventSubTypes = map[string][]eventSubScope{
+		{{range $name, $entries := .}}"{{$name}}": {
+			{{range $entries}}{Version: "{{.Core.Version}}", MsgType: nil, ConditionType: nil,},
+			{{end}}
+		},
 		{{end}}
 	}
 )
 `
 
+type subscriptionCoreDescriptor struct {
+	Name    string
+	Version string
+}
+
+// subscriptionType represents a Twitch subscription types, including its name, version, and description details.
 type subscriptionType struct {
 	Type        string
-	Name        string
-	Version     string
+	Core        subscriptionCoreDescriptor
 	Description string
 }
 
 type outputLine struct {
-	Name          string
-	Version       string
+	Core          subscriptionCoreDescriptor
 	MessageType   string
 	ConditionType string
 }
@@ -68,7 +73,11 @@ const (
 )
 
 func main() {
-	logrus.SetLevel(logrus.InfoLevel)
+	logrus.SetLevel(logrus.DebugLevel)
+	logrus.SetFormatter(&logrus.TextFormatter{
+		ForceColors:   true,
+		FullTimestamp: true,
+	})
 	body, err := refdoc.GetReferenceDocPage(eventsubTypesRefURL)
 
 	if err != nil {
@@ -105,6 +114,8 @@ func (e *eventsubCrawler) Crawl(node *html.Node) {
 		e.checkTableBodyStart(node)
 	case tableRowSearch:
 		e.checkRowStart(node)
+	default:
+		panic("unhandled default case")
 	}
 }
 
@@ -214,6 +225,7 @@ func (e *eventsubCrawler) checkRowStart(node *html.Node) {
 
 			if innerTag == nil {
 				logrus.Fatalf("Invalid inner tag for %+v", td)
+				continue
 			}
 
 			if innerTag.Data == "span" {
@@ -236,11 +248,13 @@ func (e *eventsubCrawler) checkRowStart(node *html.Node) {
 						evType.Type = value
 						position = eventsubName
 					case eventsubName:
-						evType.Name = value
+						evType.Core.Name = value
 						position = eventsubVersion
 					case eventsubVersion:
-						evType.Version = value
+						evType.Core.Version = value
 						position = eventsubDescription
+					default:
+						panic("unhandled default case")
 					}
 
 					logrus.Tracef("a/code: %s", value)
@@ -279,34 +293,19 @@ func skipToAnchor(node *html.Node) *html.Node {
 	return nil
 }
 
-func getOutputLines(eventsubTypes []subscriptionType) []outputLine {
-	output := make([]outputLine, 0, len(eventsubTypes))
+func getOutputLines(eventsubTypes []subscriptionType) map[string][]outputLine {
+	output := make(map[string][]outputLine, len(eventsubTypes))
 
 	for _, v := range eventsubTypes {
-		splittedName := strings.FieldsFunc(v.Name, func(c rune) bool {
-			return c == '.' || c == '_'
-		})
-		logrus.Trace(splittedName)
+		// TODO: get rid of that
+		msgType := ""
+		conditionType := ""
 
-		for i := 0; i < len(splittedName); i++ {
-			titleCase := cases.Title(language.AmericanEnglish)
-			splittedName[i] = titleCase.String(splittedName[i])
-		}
-
-		baseName := strings.ReplaceAll(v.Type, " ", "")
-
-		if strings.HasPrefix(baseName, "Goal") {
-			baseName = "Goals"
-		} else if strings.HasPrefix(baseName, "Shield") {
-			baseName = "ShieldMode"
-		}
-
-		msgType := fmt.Sprintf("%sEvent", baseName)
-		conditionType := fmt.Sprintf("%sEventCondition", baseName)
-
-		output = append(output, outputLine{
-			Name:          v.Name,
-			Version:       v.Version,
+		output[v.Core.Name] = append(output[v.Core.Name], outputLine{
+			Core: subscriptionCoreDescriptor{
+				Name:    v.Core.Name,
+				Version: v.Core.Version,
+			},
 			MessageType:   msgType,
 			ConditionType: conditionType,
 		})
@@ -318,7 +317,8 @@ func getOutputLines(eventsubTypes []subscriptionType) []outputLine {
 func generateFile(types []subscriptionType) error {
 	const eventsubTypesFilePermissions = 0o644
 	outputLines := getOutputLines(types)
-	logrus.Debugf("Type size: %d", len(types))
+	j, _ := json.MarshalIndent(outputLines, "", "  ")
+	fmt.Printf("%s", j)
 	fileTemplate := template.Must(template.New("eventsub").Parse(eventsubTypesFileTemplate))
 
 	var buf bytes.Buffer
