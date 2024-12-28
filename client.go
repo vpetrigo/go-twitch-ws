@@ -9,10 +9,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/coder/websocket"
 	"github.com/jellydator/ttlcache/v3"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
-	"nhooyr.io/websocket"
 )
 
 type transport struct {
@@ -85,20 +85,39 @@ type Session struct {
 	KeepaliveTimeoutSeconds int    `json:"keepalive_timeout_seconds"`
 }
 
-type Subscription struct {
-	ID        string      `json:"id"`
-	Status    string      `json:"status"`
-	Type      string      `json:"type"`
-	Version   string      `json:"version"`
-	Condition interface{} `json:"condition"`
-	Transport transport   `json:"transport"`
-	CreatedAt string      `json:"created_at"`
-	Cost      int         `json:"cost"`
+type EventsubSubscription struct {
+	ID        string            `json:"id"`
+	Status    string            `json:"status"`
+	Type      string            `json:"type"`
+	Version   string            `json:"version"`
+	Condition EventsubCondition `json:"condition"`
+	Transport EventsubTransport `json:"transport"`
+	CreatedAt string            `json:"created_at"`
+	Cost      int64             `json:"cost"`
+}
+
+type EventsubTransport struct {
+	Method    string `json:"method"`
+	Callback  string `json:"callback,omitempty"`
+	SessionID string `json:"session_id,omitempty"`
+}
+
+type EventsubCondition struct {
+	BroadcasterUserID     string `json:"broadcaster_user_id,omitempty"`
+	ToBroadcasterUserID   string `json:"to_broadcaster_user_id,omitempty"`
+	UserID                string `json:"user_id,omitempty"`
+	FromBroadcasterUserID string `json:"from_broadcaster_user_id,omitempty"`
+	ModeratorUserID       string `json:"moderator_user_id,omitempty"`
+	ClientID              string `json:"client_id,omitempty"`
+	ExtensionClientID     string `json:"extension_client_id,omitempty"`
+	OrganizationID        string `json:"organization_id,omitempty"`
+	CategoryID            string `json:"category_id,omitempty"`
+	CampaignID            string `json:"campaign_id,omitempty"`
 }
 
 type Notification struct {
-	Subscription Subscription `json:"subscription"`
-	Event        interface{}  `json:"event"`
+	Subscription EventsubSubscription `json:"subscription"`
+	Event        interface{}          `json:"event"`
 }
 
 type Client struct {
@@ -621,9 +640,8 @@ func unmarshalNotification(data []byte) (Notification, error) {
 		return Notification{}, err
 	}
 
-	var condMsg json.RawMessage
 	notification := Notification{
-		Subscription: Subscription{Condition: &condMsg},
+		Subscription: EventsubSubscription{},
 		Event:        &msg,
 	}
 
@@ -638,18 +656,27 @@ func unmarshalNotification(data []byte) (Notification, error) {
 		return Notification{}, errors.Join(errNotSupportedEvent, err)
 	}
 
-	event := e.MsgType
+	var foundEventScope *eventSubScope
+
+	for i, v := range e {
+		if v.Version == notification.Subscription.Version {
+			foundEventScope = &e[i]
+			break
+		}
+	}
+
+	if foundEventScope == nil {
+		err := fmt.Errorf("unsupported event version: %s", notification.Subscription.Version)
+		return Notification{}, errors.Join(errNotSupportedEvent, err)
+	}
+
+	event := foundEventScope.MsgType
 	if err := unmarshalEnvelope(msg, event); err != nil {
 		return Notification{}, err
 	}
 
-	condition := e.ConditionType
-	if err := unmarshalEnvelope(condMsg, condition); err != nil {
-		return Notification{}, err
-	}
-
 	notification.Event = event
-	notification.Subscription.Condition = condition
+
 	return notification, nil
 }
 
