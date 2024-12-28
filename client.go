@@ -15,11 +15,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type transport struct {
-	Method    string `json:"method"`
-	SessionID string `json:"session_id"`
-}
-
 type OnEventFn func()
 type OnMessageEventFn func(*Metadata, *Payload)
 
