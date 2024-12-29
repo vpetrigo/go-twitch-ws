@@ -13,5 +13,3 @@ type CharityCampaignStopEvent struct {
 	TargetAmount       TargetAmount  `json:"target_amount"`       // An object that contains the campaign’s target fundraising goal.
 	StoppedAt          string        `json:"stopped_at"`          // The UTC timestamp (in RFC3339 format) of when the broadcaster stopped the campaign.
 }
-
-type CharityCampaignStopEventCondition struct{}

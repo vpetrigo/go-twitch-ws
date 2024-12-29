@@ -11,5 +11,3 @@ type ChannelUnbanEvent struct {
 	ModeratorUserLogin   string `json:"moderator_user_login"`   // The user login of the issuer of the unban.
 	ModeratorUserName    string `json:"moderator_user_name"`    // The user name of the issuer of the unban.
 }
-
-type ChannelUnbanEventCondition struct{}

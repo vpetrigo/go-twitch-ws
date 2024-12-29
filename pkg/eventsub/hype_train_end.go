@@ -11,6 +11,5 @@ type HypeTrainEndEvent struct {
 	StartedAt            string             `json:"started_at"`             // The time when the Hype Train started.
 	EndedAt              string             `json:"ended_at"`               // The time when the Hype Train ended.
 	CooldownEndsAt       string             `json:"cooldown_ends_at"`       // The time when the Hype Train cooldown ends so that the next Hype Train can start.
+	IsGoldenKappaTrain   bool               `json:"is_golden_kappa_train"`  // Indicates if the Hype Train is a Golden Kappa Train.
 }
-
-type HypeTrainEndEventCondition struct{}

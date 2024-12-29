@@ -13,5 +13,3 @@ type CharityCampaignStartEvent struct {
 	TargetAmount       TargetAmount  `json:"target_amount"`       // An object that contains the campaign’s target fundraising goal.
 	StartedAt          string        `json:"started_at"`          // The UTC timestamp (in RFC3339 format) of when the broadcaster started the campaign.
 }
-
-type CharityCampaignStartEventCondition struct{}

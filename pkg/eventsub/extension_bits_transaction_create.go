@@ -11,5 +11,3 @@ type ExtensionBitsTransactionCreateEvent struct {
 	UserName             string  `json:"user_name"`              // The transaction’s user display name.
 	Product              Product `json:"product"`                // Additional extension product information.
 }
-
-type ExtensionBitsTransactionCreateEventCondition struct{}

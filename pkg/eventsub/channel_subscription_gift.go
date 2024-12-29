@@ -12,5 +12,3 @@ type ChannelSubscriptionGiftEvent struct {
 	CumulativeTotal      int    `json:"cumulative_total"`       // The number of subscriptions gifted by this user in the channel.
 	IsAnonymous          bool   `json:"is_anonymous"`           // Whether the subscription gift was anonymous.
 }
-
-type ChannelSubscriptionGiftEventCondition struct{}

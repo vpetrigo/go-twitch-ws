@@ -8,5 +8,3 @@ type StreamOnlineEvent struct {
 	Type                 string `json:"type"`                   // The stream type.
 	StartedAt            string `json:"started_at"`             // The timestamp at which the stream went online at.
 }
-
-type StreamOnlineEventCondition struct{}

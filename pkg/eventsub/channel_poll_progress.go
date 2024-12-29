@@ -12,5 +12,3 @@ type ChannelPollProgressEvent struct {
 	StartedAt            string              `json:"started_at"`             // The time the poll started.
 	EndsAt               string              `json:"ends_at"`                // The time the poll will end.
 }
-
-type ChannelPollProgressEventCondition struct{}

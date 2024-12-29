@@ -15,5 +15,3 @@ type ShoutoutCreateEvent struct {
 	CooldownEndsAt         string `json:"cooldown_ends_at"`          // The UTC timestamp (in RFC3339 format) of when the broadcaster may send a Shoutout to a different broadcaster.
 	TargetCooldownEndsAt   string `json:"target_cooldown_ends_at"`   // The UTC timestamp (in RFC3339 format) of when the broadcaster may send another Shoutout to the broadcaster in to_broadcaster_user_id.
 }
-
-type ShoutoutCreateEventCondition struct{}

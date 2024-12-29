@@ -10,5 +10,3 @@ type ChannelUpdateEvent struct {
 	CategoryName                string   `json:"category_name"`                 // The category name.
 	ContentClassificationLabels []string `json:"content_classification_labels"` // Array of content classification label IDs currently applied on the Channel.
 }
-
-type ChannelUpdateEventCondition struct{}

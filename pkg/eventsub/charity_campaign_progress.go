@@ -12,5 +12,3 @@ type CharityCampaignProgressEvent struct {
 	CurrentAmount      CurrentAmount `json:"current_amount"`      // An object that contains the current amount of donations that the campaign has received.
 	TargetAmount       TargetAmount  `json:"target_amount"`       // An object that contains the campaign’s target fundraising goal.
 }
-
-type CharityCampaignProgressEventCondition struct{}

@@ -10,5 +10,3 @@ type ShieldModeEvent struct {
 	StartedAt            string `json:"started_at"`             // The UTC timestamp (in RFC3339 format) of when the moderator activated Shield Mode.
 	EndedAt              string `json:"ended_at"`               // The UTC timestamp (in RFC3339 format) of when the moderator deactivated Shield Mode.
 }
-
-type ShieldModeEventCondition struct{}

@@ -13,5 +13,3 @@ type ChannelPointsCustomRewardRedemptionAddEvent struct {
 	Reward               Reward `json:"reward"`                 // Basic information about the reward that was redeemed, at the time it was redeemed.
 	RedeemedAt           string `json:"redeemed_at"`            // RFC3339 timestamp of when the reward was redeemed.
 }
-
-type ChannelPointsCustomRewardRedemptionAddEventCondition struct{}

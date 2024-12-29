@@ -9,5 +9,3 @@ type ChannelFollowEvent struct {
 	BroadcasterUserName  string `json:"broadcaster_user_name"`  // The requested broadcaster display name.
 	FollowedAt           string `json:"followed_at"`            // RFC3339 timestamp of when the follow occurred.
 }
-
-type ChannelFollowEventCondition struct{}

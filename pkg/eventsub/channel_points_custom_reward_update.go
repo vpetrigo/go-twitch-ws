@@ -22,5 +22,3 @@ type ChannelPointsCustomRewardUpdateEvent struct {
 	CooldownExpiresAt                 string              `json:"cooldown_expires_at"`                   // Timestamp of the cooldown expiration.
 	RedemptionsRedeemedCurrentStream  int                 `json:"redemptions_redeemed_current_stream"`   // The number of redemptions redeemed during the current live stream.
 }
-
-type ChannelPointsCustomRewardUpdateEventCondition struct{}

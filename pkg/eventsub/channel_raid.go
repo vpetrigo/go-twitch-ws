@@ -9,5 +9,3 @@ type ChannelRaidEvent struct {
 	ToBroadcasterUserName    string `json:"to_broadcaster_user_name"`    // The broadcaster display name that received the raid.
 	Viewers                  int    `json:"viewers"`                     // The number of viewers in the raid.
 }
-
-type ChannelRaidEventCondition struct{}

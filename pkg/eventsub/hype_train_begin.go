@@ -13,6 +13,5 @@ type HypeTrainBeginEvent struct {
 	Level                int                `json:"level"`                  // The starting level of the Hype Train.
 	StartedAt            string             `json:"started_at"`             // The time when the Hype Train started.
 	ExpiresAt            string             `json:"expires_at"`             // The time when the Hype Train expires.
+	IsGoldenKappaTrain   bool               `json:"is_golden_kappa_train"`  // Indicates if the Hype Train is a Golden Kappa Train.
 }
-
-type HypeTrainBeginEventCondition struct{}

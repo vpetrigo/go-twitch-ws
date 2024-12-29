@@ -10,5 +10,3 @@ type ChannelSubscriptionEndEvent struct {
 	Tier                 string `json:"tier"`                   // The tier of the subscription that ended.
 	IsGift               bool   `json:"is_gift"`                // Whether the subscription was a gift.
 }
-
-type ChannelSubscriptionEndEventCondition struct{}

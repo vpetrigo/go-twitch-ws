@@ -13,5 +13,3 @@ type ChannelSubscriptionMessageEvent struct {
 	StreakMonths         int     `json:"streak_months"`          // The number of consecutive months the user’s current subscription has been active.
 	DurationMonths       int     `json:"duration_months"`        // The month duration of the subscription.
 }
-
-type ChannelSubscriptionMessageEventCondition struct{}
