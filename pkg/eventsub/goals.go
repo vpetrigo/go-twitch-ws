@@ -13,5 +13,3 @@ type GoalsEvent struct {
 	StartedAt            string `json:"started_at"`             // The UTC timestamp in RFC 3339 format, which indicates when the broadcaster created the goal.
 	EndedAt              string `json:"ended_at"`               // The UTC timestamp in RFC 3339 format, which indicates when the broadcaster ended the goal.
 }
-
-type GoalsEventCondition struct{}

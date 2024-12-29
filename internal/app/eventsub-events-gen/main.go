@@ -10,9 +10,10 @@ import (
 	"text/template"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/net/html"
+
 	"github.com/vpetrigo/go-twitch-ws/internal/pkg/crawler"
 	"github.com/vpetrigo/go-twitch-ws/internal/pkg/refdoc"
-	"golang.org/x/net/html"
 )
 
 const eventsubEventsRefURL = "https://dev.twitch.tv/docs/eventsub/eventsub-reference/"
@@ -88,7 +89,7 @@ func main() {
 }
 
 func getEvents(resp *html.Node) []eventsubEvent {
-	const expectedEventNumber = 50
+	const expectedEventNumber = 80
 	events := &eventsubEventCrawler{
 		events: make([]eventsubEvent, 0, expectedEventNumber),
 	}
@@ -118,10 +119,14 @@ func (e *eventsubEventCrawler) Crawl(node *html.Node) {
 func (e *eventsubEventCrawler) checkMainEventHeader(node *html.Node) {
 	if node.Data == "h2" {
 		text := node.FirstChild
+		logrus.Debugf("Found: %s", text.Data)
 
 		if text.Data == "Events" {
 			e.state = eventHeaderSearch
-			logrus.Trace("Events Found")
+			logrus.Debugf("Events Found")
+		} else if strings.Contains(text.Data, "Condition") {
+			logrus.Debugf("Condition found %s", text.Data)
+			processConditions(node)
 		}
 	}
 }
@@ -141,7 +146,7 @@ func (e *eventsubEventCrawler) checkEventHeader(node *html.Node) {
 			logrus.Tracef("Found: %s", d)
 		} else {
 			logrus.Errorf("Event ends on %#v", node)
-			e.state = endSearch
+			e.state = eventHeaderSearch
 		}
 	} else if isShoutOutHeader || isShieldHeader {
 		d := node.FirstChild.Data
@@ -161,21 +166,7 @@ func (e *eventsubEventCrawler) checkEventTable(node *html.Node) {
 
 func (e *eventsubEventCrawler) verifyEventTable(node *html.Node) {
 	if node.Data == "thead" {
-		var tr *html.Node
-
-		for tr = node.FirstChild; tr != nil; tr = tr.NextSibling {
-			if tr.Data == "tr" {
-				break
-			}
-		}
-
-		if tr == nil {
-			logrus.Errorf("nil table row: %#v", node)
-			e.state = endSearch
-			return
-		}
-
-		if !(standardEventTableValidator(tr) || charityEventTableValidator(tr)) {
+		if !verifyHeader(node, standardEventTableValidator, charityEventTableValidator) {
 			e.state = eventHeaderSearch
 			return
 		}
@@ -265,6 +256,8 @@ func getNextPosition(position processPosition) processPosition {
 		position = descriptionPosition
 	case descriptionPosition:
 		position = done
+	default:
+		panic("unhandled default case")
 	}
 
 	return position
@@ -374,6 +367,10 @@ func getArrayObjectInnerFields(tr *html.Node) []eventsubEventField {
 		}
 	}
 
+	if table == nil {
+		panic("table not found")
+	}
+
 	// skip to the second table
 	for it := table.NextSibling; it != nil; it = it.NextSibling {
 		if crawler.IsElementNode(it) && it.Data == "table" {
@@ -437,13 +434,15 @@ func getEventsubFieldFromTable(tr *html.Node) (eventsubEventField, fieldTypeRela
 
 		switch position {
 		case namePosition:
-			fieldName = value
+			fieldName = strings.TrimSpace(value)
 			fieldRelation = relation
 		case typePosition:
 			fieldTy = strings.ToLower(value)
 			fieldTyDescriptor = getFieldTypeDescriptor(innerTag)
 		case descriptionPosition:
 			fieldDescription = value
+		default:
+			panic("unhandled default case")
 		}
 
 		position = getNextPosition(position)
@@ -463,6 +462,7 @@ func getEventsubFieldFromTable(tr *html.Node) (eventsubEventField, fieldTypeRela
 	return fieldEvent, fieldRelation
 }
 
+// tableRawTraverser iterates over table's row elements and calls the processor function.
 func tableRawTraverser(tableRow *html.Node, processor tableRowProcessor) {
 	for tr := tableRow; tr != nil; tr = tr.NextSibling {
 		if crawler.IsElementNode(tr) && tr.Data == "tr" {

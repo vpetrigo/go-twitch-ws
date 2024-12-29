@@ -12,5 +12,3 @@ type ChannelPredictionEndEvent struct {
 	StartedAt            string     `json:"started_at"`             // The time the Channel Points Prediction started.
 	EndedAt              string     `json:"ended_at"`               // The time the Channel Points Prediction ended.
 }
-
-type ChannelPredictionEndEventCondition struct{}

@@ -8,5 +8,3 @@ type UserUpdateEvent struct {
 	EmailVerified bool   `json:"email_verified"` // A Boolean value that determines whether Twitch has verified the user’s email address.
 	Description   string `json:"description"`    // The user’s description.
 }
-
-type UserUpdateEventCondition struct{}

@@ -10,5 +10,3 @@ type ShoutoutReceivedEvent struct {
 	ViewerCount              int    `json:"viewer_count"`                // The number of users that were watching the from-broadcaster’s stream at the time of the Shoutout.
 	StartedAt                string `json:"started_at"`                  // The UTC timestamp (in RFC3339 format) of when the moderator sent the Shoutout.
 }
-
-type ShoutoutReceivedEventCondition struct{}

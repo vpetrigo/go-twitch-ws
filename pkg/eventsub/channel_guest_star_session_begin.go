@@ -7,5 +7,3 @@ type ChannelGuestStarSessionBeginEvent struct {
 	SessionID            string `json:"session_id"`             // ID representing the unique session that was started.
 	StartedAt            string `json:"started_at"`             // RFC3339 timestamp indicating the time the session began.
 }
-
-type ChannelGuestStarSessionBeginEventCondition struct{}

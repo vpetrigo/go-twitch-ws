@@ -15,5 +15,3 @@ type ChannelBanEvent struct {
 	EndsAt               string `json:"ends_at"`                // The UTC date and time (in RFC3339 format) of when the timeout ends.
 	IsPermanent          bool   `json:"is_permanent"`           // Indicates whether the ban is permanent (true) or a timeout (false).
 }
-
-type ChannelBanEventCondition struct{}

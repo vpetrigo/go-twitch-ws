@@ -6,5 +6,3 @@ type UserAuthorizationRevokeEvent struct {
 	UserLogin string `json:"user_login"` // The user login for the user who has revoked authorization for your client id.
 	UserName  string `json:"user_name"`  // The user display name for the user who has revoked authorization for your client id.
 }
-
-type UserAuthorizationRevokeEventCondition struct{}

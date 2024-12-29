@@ -11,5 +11,3 @@ type ChannelCheerEvent struct {
 	Message              string `json:"message"`                // The message sent with the cheer.
 	Bits                 int    `json:"bits"`                   // The number of bits cheered.
 }
-
-type ChannelCheerEventCondition struct{}

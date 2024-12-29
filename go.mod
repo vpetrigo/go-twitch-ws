@@ -1,17 +1,16 @@
 module github.com/vpetrigo/go-twitch-ws
 
-go 1.21
+go 1.22
+
+toolchain go1.23.4
 
 require (
-	github.com/jellydator/ttlcache/v3 v3.0.1
+	github.com/coder/websocket v1.8.12
+	github.com/jellydator/ttlcache/v3 v3.3.0
 	github.com/sirupsen/logrus v1.9.3
-	golang.org/x/net v0.14.0
-	golang.org/x/sync v0.3.0
-	golang.org/x/text v0.12.0
-	nhooyr.io/websocket v1.8.7
+	golang.org/x/net v0.33.0
+	golang.org/x/sync v0.10.0
+	golang.org/x/text v0.21.0
 )
 
-require (
-	github.com/klauspost/compress v1.16.7 // indirect
-	golang.org/x/sys v0.11.0 // indirect
-)
+require golang.org/x/sys v0.28.0 // indirect

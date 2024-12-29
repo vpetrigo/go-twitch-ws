@@ -10,5 +10,3 @@ type ChannelPredictionProgressEvent struct {
 	StartedAt            string     `json:"started_at"`             // The time the Channel Points Prediction started.
 	LocksAt              string     `json:"locks_at"`               // The time the Channel Points Prediction will automatically lock.
 }
-
-type ChannelPredictionProgressEventCondition struct{}
