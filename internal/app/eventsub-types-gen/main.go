@@ -21,6 +21,8 @@ const eventsubTypesFile = "eventsub_types.go"
 const eventsubTypesRefURL = "https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/"
 const eventsubTypesFileTemplate = `package twitchws
 
+import "github.com/vpetrigo/go-twitch-ws/pkg/eventsub"
+
 type eventSubScope struct {
 	Version       string
 	MsgType       interface{}
@@ -30,7 +32,7 @@ type eventSubScope struct {
 var (
 	eventSubTypes = map[string][]eventSubScope{
 		{{range $name, $entries := .}}"{{$name}}": {
-			{{range $entries}}{Version: "{{.Core.Version}}", MsgType: nil, ConditionType: nil,},
+			{{range $entries}}{Version: "{{.Core.Version}}", MsgType: &eventsub.{{.MessageType}}{}},
 			{{end}}
 		},
 		{{end}}
@@ -51,9 +53,8 @@ type subscriptionType struct {
 }
 
 type outputLine struct {
-	Core          subscriptionCoreDescriptor
-	MessageType   string
-	ConditionType string
+	Core        subscriptionCoreDescriptor
+	MessageType string
 }
 
 type eventsubCrawler struct {
@@ -297,17 +298,22 @@ func getOutputLines(eventsubTypes []subscriptionType) map[string][]outputLine {
 	output := make(map[string][]outputLine, len(eventsubTypes))
 
 	for _, v := range eventsubTypes {
-		// TODO: get rid of that
-		msgType := ""
-		conditionType := ""
+		baseName := strings.ReplaceAll(v.Type, " ", "")
+
+		if strings.HasPrefix(baseName, "Goal") {
+			baseName = "Goals"
+		} else if strings.HasPrefix(baseName, "Shield") {
+			baseName = "ShieldMode"
+		}
+
+		msgType := fmt.Sprintf("%sEvent", baseName)
 
 		output[v.Core.Name] = append(output[v.Core.Name], outputLine{
 			Core: subscriptionCoreDescriptor{
 				Name:    v.Core.Name,
 				Version: v.Core.Version,
 			},
-			MessageType:   msgType,
-			ConditionType: conditionType,
+			MessageType: msgType,
 		})
 	}
 
