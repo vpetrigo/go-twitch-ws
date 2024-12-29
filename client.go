@@ -665,6 +665,11 @@ func unmarshalNotification(data []byte) (Notification, error) {
 		return Notification{}, errors.Join(errNotSupportedEvent, err)
 	}
 
+	if foundEventScope.MsgType == nil {
+		err := fmt.Errorf("unsupported message: %s", notification.Subscription.Type)
+		return Notification{}, errors.Join(errNotSupportedEvent, err)
+	}
+
 	event := foundEventScope.MsgType
 	if err := unmarshalEnvelope(msg, event); err != nil {
 		return Notification{}, err
