@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/vpetrigo/go-twitch-ws/pkg/eventsub"
 
 	"github.com/vpetrigo/go-twitch-ws"
+	"github.com/vpetrigo/go-twitch-ws/pkg/eventsub"
 )
 
 const websocketTwitchTestServer = "ws://127.0.0.1:8080/ws"
@@ -15,6 +15,9 @@ const websocketTwitchTestServer = "ws://127.0.0.1:8080/ws"
 func main() {
 	logrus.SetLevel(logrus.DebugLevel)
 	logrus.SetOutput(os.Stdout)
+	logrus.SetFormatter(&logrus.TextFormatter{
+		ForceColors: true,
+	})
 	c := twitchws.NewClient(
 		websocketTwitchTestServer,
 		twitchws.WithOnWelcome(onWelcomeEvent),
@@ -52,9 +55,8 @@ func onNotificationEvent(_ *twitchws.Metadata, payload *twitchws.Payload) {
 	logrus.Debugf("Notification: %+v", notification)
 
 	if event, ok := notification.Event.(*eventsub.ChannelFollowEvent); ok {
-		condition := notification.Subscription.Condition.(*eventsub.ChannelFollowEventCondition)
 		logrus.Debugf("Channel follow: %+v", event)
-		logrus.Debugf("Condition: %+v", condition)
+		logrus.Debugf("Condition: %+v", notification.Subscription.Condition)
 	}
 }
 
