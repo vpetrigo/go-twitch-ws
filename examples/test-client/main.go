@@ -1,3 +1,14 @@
+// This is the test client that relies on Twitch CLI - https://github.com/twitchdev/twitch-cli to demonstrate
+// WebSocket client operation.
+//
+// Run the WebSocket server:
+//
+//	twitch event websocket start-server
+//
+// Start the `test-client` application and send different events to verify it works.
+// Test events can be sent like that:
+//
+//	twitch event trigger -T websocket channel.follow
 package main
 
 import (
@@ -50,8 +61,9 @@ func onWelcomeEvent(metadata *twitchws.Metadata, payload *twitchws.Payload) {
 	logrus.Debugf("Payload: %+v", payload)
 }
 
-func onNotificationEvent(_ *twitchws.Metadata, payload *twitchws.Payload) {
+func onNotificationEvent(metadata *twitchws.Metadata, payload *twitchws.Payload) {
 	notification := payload.Payload.(twitchws.Notification)
+	logrus.Debugf("Metadata: %+v", metadata)
 	logrus.Debugf("Notification: %+v", notification)
 
 	if event, ok := notification.Event.(*eventsub.ChannelFollowEvent); ok {
