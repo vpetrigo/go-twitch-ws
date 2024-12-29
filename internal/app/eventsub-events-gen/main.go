@@ -256,6 +256,8 @@ func getNextPosition(position processPosition) processPosition {
 		position = descriptionPosition
 	case descriptionPosition:
 		position = done
+	default:
+		panic("unhandled default case")
 	}
 
 	return position
@@ -365,6 +367,10 @@ func getArrayObjectInnerFields(tr *html.Node) []eventsubEventField {
 		}
 	}
 
+	if table == nil {
+		panic("table not found")
+	}
+
 	// skip to the second table
 	for it := table.NextSibling; it != nil; it = it.NextSibling {
 		if crawler.IsElementNode(it) && it.Data == "table" {
@@ -435,6 +441,8 @@ func getEventsubFieldFromTable(tr *html.Node) (eventsubEventField, fieldTypeRela
 			fieldTyDescriptor = getFieldTypeDescriptor(innerTag)
 		case descriptionPosition:
 			fieldDescription = value
+		default:
+			panic("unhandled default case")
 		}
 
 		position = getNextPosition(position)
