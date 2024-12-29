@@ -332,7 +332,6 @@ func newClient(url string, opts ...Option) *Client {
 // Connect establishes a connection by initializing contexts, transitioning to the connecting state, and starting the worker.
 // Returns an error if the client is already active.
 func (c *Client) Connect() error {
-	log.Debug("FOOOOOOOOOOOOOOOOOOOOOOOO")
 	if !c.setActive() {
 		return ErrAlreadyInUse
 	}
