@@ -75,13 +75,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
+	"log/slog"
 	"sync/atomic"
 	"time"
 
 	"github.com/coder/websocket"
 	"github.com/jellydator/ttlcache/v3"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -138,7 +137,7 @@ var (
 		"revocation":        revocationMessageHandler,
 		"session_reconnect": reconnectMessageHandler,
 	}
-	log = logrus.New()
+	log = slog.Default()
 )
 
 const (
@@ -300,11 +299,6 @@ type Client struct {
 	onReconnectMessage OnMessageEventFn
 }
 
-func init() {
-	log.SetLevel(logrus.DebugLevel)
-	log.SetOutput(os.Stdout)
-}
-
 // NewClientDefault creates a new Client instance with the default websocketTwitch URL and optional configuration options.
 func NewClientDefault(opts ...Option) *Client {
 	return newClient(websocketTwitch, opts...)
@@ -338,6 +332,7 @@ func newClient(url string, opts ...Option) *Client {
 // Connect establishes a connection by initializing contexts, transitioning to the connecting state, and starting the worker.
 // Returns an error if the client is already active.
 func (c *Client) Connect() error {
+	log.Debug("FOOOOOOOOOOOOOOOOOOOOOOOO")
 	if !c.setActive() {
 		return ErrAlreadyInUse
 	}
@@ -437,7 +432,7 @@ func (c *Client) cleanUp(err error) {
 		return
 	}
 
-	log.Debugf("Error: %s", err)
+	log.Error("Clean up error", "err", err)
 
 	status := websocket.StatusNormalClosure
 	reason := ""
@@ -507,7 +502,7 @@ func worker(c *Client) error {
 		case stateInactive:
 			return err
 		default:
-			log.Errorf("unsupported state: %d", c.state)
+			log.Error("unsupported state", "state", c.state)
 		}
 	}
 }
@@ -541,14 +536,14 @@ func connectedStateHandler(c *Client) (bool, error) {
 				if errors.Is(err, context.Canceled) {
 					if c.isReconnectRequired.Load() {
 						err := c.reconnectGroup.Wait()
-						log.Debugf("Error: %s. Reconnect done", err)
+						log.Debug("Reconnect done", "err", err)
 
 						return false, err
 					}
 
 					return true, err
 				} else if !errors.Is(err, errNotSupported) {
-					log.Error(err)
+					log.Error("Reconnect not supported", "err", err)
 					return false, err
 				}
 			}
@@ -583,7 +578,7 @@ func singleMessageHandler(c *Client) error {
 	item := c.msgTracking.Get(m.MessageID)
 
 	if item != nil {
-		log.Debugf("Message ID already present: %s", item.Key())
+		log.Debug("Message ID already present", "msgID", item.Key())
 	}
 
 	c.msgTracking.Set(m.MessageID, m.MessageTimestamp, time.Second*c.keepaliveTimeout)
@@ -603,7 +598,7 @@ func singleMessageHandler(c *Client) error {
 			onEvent(m, p)
 		}
 	} else {
-		log.Warnf("unknown Twitch message type: %s", m.MessageType)
+		log.Warn("unknown Twitch message type", "msgType", m.MessageType)
 	}
 
 	return nil
@@ -743,7 +738,7 @@ func notificationMessageHandler(c *Client, metadata *Metadata, data []byte) (*Pa
 		c.lastHeardTimestamp, err = time.Parse(time.RFC3339Nano, metadata.MessageTimestamp)
 	}
 
-	log.Debugf("Notification: %+v", payload)
+	log.Debug("notification", "payload", payload)
 
 	return payload, c.onNotificationMessage, err
 }
@@ -756,7 +751,7 @@ func revocationMessageHandler(c *Client, metadata *Metadata, data []byte) (*Payl
 		c.lastHeardTimestamp, err = time.Parse(time.RFC3339Nano, metadata.MessageTimestamp)
 	}
 
-	log.Debugf("Revocation received: %#v", payload)
+	log.Debug("revocation", "payload", payload)
 
 	return payload, c.onRevocationMessage, err
 }
@@ -799,7 +794,7 @@ func unmarshalEnvelope(data []byte, e any) error {
 	err := json.Unmarshal(data, &e)
 
 	if err != nil {
-		log.Errorf("error: %v", err)
+		log.Error("unmarshal envelope", "err", err)
 	}
 
 	return err
