@@ -21,38 +21,51 @@
 // Below is an example of using the `twitchws` package to connect to the Twitch EventSub WebSocket
 // and listen to event notifications.
 //
+//	package main
+//
 //	import (
 //		"context"
-//		"log"
+//		"fmt"
 //
 //		"github.com/vpetrigo/go-twitch-ws"
 //	)
 //
-//	func main() {
-//		// Define an event callback to handle incoming notifications.
-//		messageCallback := func(metadata *twitchws.Metadata, payload *twitchws.Payload) {
-//			log.Printf("Received message: Metadata: %v, Payload: %v", metadata, payload)
-//		}
+//	const websocketTwitchTestServer = "ws://127.0.0.1:8080/ws"
 //
-//		// Create a new instance of the client and register the message callbacks for specific event types.
+//	func main() {
+//		messageHandler := func(m *twitchws.Metadata, p *twitchws.Payload) {
+//			fmt.Printf("Metadata: %+v\n", m)
+//			fmt.Printf("Payload: %+v\n", p)
+//		}
+//		stateHandler := func(state string) func() {
+//			return func() {
+//				fmt.Printf("Event: %s\n", state)
+//			}
+//		}
 //		c := twitchws.NewClient(
 //			websocketTwitchTestServer,
-//			twitchws.WithOnWelcome(messageCallback),
-//			twitchws.WithOnNotification(messageCallback),
-//			twitchws.WithOnConnect(messageCallback),
-//			twitchws.WithOnDisconnect(messageCallback),
-//			twitchws.WithOnRevocation(messageCallback))
+//			twitchws.WithOnWelcome(messageHandler),
+//			twitchws.WithOnNotification(messageHandler),
+//			twitchws.WithOnConnect(stateHandler("Connect")),
+//			twitchws.WithOnDisconnect(stateHandler("Disconnect")),
+//			twitchws.WithOnRevocation(messageHandler))
 //		// Start the WebSocket connection.
-//		if err := client.Start(); err != nil {
-//			log.Fatalf("Failed to start twitchws client: %s", err)
+//		err := c.Connect()
+//
+//		if err != nil {
+//			fmt.Println(err)
 //		}
 //		// Wait or run other application logic here.
-//		if err := client.Wait(); err != nil {
-//			log.Fatalf("Failed to wait twitchws client: %s", err)
+//		err = c.Wait()
+//
+//		if err != nil {
+//			fmt.Println(err)
 //		}
 //		// Properly stop the client when shutting down.
-//		if err := client.Stop(); err != nil {
-//			log.Fatalf("Failed to stop twitchws client: %s", err)
+//		err = c.Close()
+//
+//		if err != nil {
+//			fmt.Println(err)
 //		}
 //	}
 package twitchws
