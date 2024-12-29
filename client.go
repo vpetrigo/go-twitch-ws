@@ -15,12 +15,19 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// OnEventFn defines a callback function to be executed on specific client events such as connection or disconnection.
 type OnEventFn func()
+
+// OnMessageEventFn defines a callback function to process message events, receiving metadata and payload as parameters.
 type OnMessageEventFn func(*Metadata, *Payload)
 
+// websocketMessageFn defines a function type that processes a websocket message, returning a Payload, event callback, and error.
 type websocketMessageFn func(*Client, *Metadata, []byte) (*Payload, OnMessageEventFn, error)
+
+// clientState represents the internal state of a client, capturing various states during its lifecycle and operations.
 type clientState int
 
+// websocketTwitch is the WebSocket endpoint URL for connecting to Twitch EventSub services.
 const websocketTwitch = "wss://eventsub.wss.twitch.tv/ws"
 
 var (
@@ -30,12 +37,26 @@ var (
 )
 
 var (
-	errNotSupported           = errors.New("message type is no supported")
-	errWebsocketReadError     = errors.New("read error")
-	errUnmarshalError         = errors.New("failed to unmarshal message")
-	errHandlingError          = errors.New("handling error")
-	errConnectionNotAlive     = errors.New("connection is lost")
-	errNotSupportedEvent      = errors.New("unsupported event")
+
+	// errNotSupported indicates that the message type provided is not supported by the application.
+	errNotSupported = errors.New("message type is no supported")
+
+	// errWebsocketReadError represents an error that occurs during reading from a WebSocket connection.
+	errWebsocketReadError = errors.New("read error")
+
+	// errUnmarshalError represents an error indicating failure to unmarshal a message from its data structure.
+	errUnmarshalError = errors.New("failed to unmarshal message")
+
+	// errHandlingError represents an error that occurs during the handling of a message or operation.
+	errHandlingError = errors.New("handling error")
+
+	// errConnectionNotAlive indicates that the connection to the server is no longer active or has been lost.
+	errConnectionNotAlive = errors.New("connection is lost")
+
+	// errNotSupportedEvent represents an error indicating that an attempted operation involves an unsupported event type.
+	errNotSupportedEvent = errors.New("unsupported event")
+
+	// errReconnectTimeoutExpire represents an error indicating that the reconnection process exceeded the allowed timeout.
 	errReconnectTimeoutExpire = errors.New("reconnect awaiting timeout")
 )
 
@@ -51,13 +72,24 @@ var (
 )
 
 const (
+
+	// stateInactive represents the client state where it is not active or engaged in any connection-related process.
 	stateInactive = iota
+
+	// stateConnecting represents the client state during the process of establishing a connection.
 	stateConnecting
+
+	// stateConnected indicates that the client has successfully established a connection and is in a stable connected state.
 	stateConnected
+
+	// stateReconnecting indicates that the client is attempting to reconnect after being disconnected.
 	stateReconnecting
+
+	// stateDisconnected represents the state where the client has been disconnected and requires cleanup or reconnection setup.
 	stateDisconnected
 )
 
+// defaultTTLTimeoutSec defines the default time-to-live duration in seconds for cached messages in the client's tracking system.
 const defaultTTLTimeoutSec = 10
 
 type Metadata struct {
@@ -116,40 +148,86 @@ type Notification struct {
 }
 
 type Client struct {
-	ctx         context.Context
-	ctxCancel   context.CancelFunc
-	opCtx       context.Context
-	opCtxCancel context.CancelFunc
-	// connection related stuff
-	conn          *websocket.Conn
-	reconnectConn *websocket.Conn
-	// client main routine related stuff
-	waitGroup    *errgroup.Group
-	waitGroupCtx context.Context
-	workerStop   chan struct{}
+	// ctx is the main context for the client, used to manage the lifecycle and cancelation of ongoing operations.
+	ctx context.Context
 
-	reconnectGroup    *errgroup.Group
+	// ctxCancel is a context cancel function used to terminate the main context of the client.
+	ctxCancel context.CancelFunc
+
+	// opCtx is the operational context used for managing and canceling ongoing operations within the client lifecycle.
+	opCtx context.Context
+
+	// opCtxCancel defines a cancel function for the operational context, used to terminate operations gracefully.
+	opCtxCancel context.CancelFunc
+
+	// conn represents the active WebSocket connection used for communication between the client and the server.
+	conn *websocket.Conn
+
+	// reconnectConn stores a websocket connection used for reconnecting after the main connection is lost or closed.
+	reconnectConn *websocket.Conn
+
+	// waitGroup is used to manage a group of goroutines and wait for their completion or capture their errors collectively.
+	waitGroup *errgroup.Group
+
+	// waitGroupCtx is the context associated with the wait group, enabling cancellation and shared context across routines.
+	waitGroupCtx context.Context
+
+	// workerStop is a channel used to signal the worker goroutine to stop its execution.
+	workerStop chan struct{}
+
+	// reconnectGroup manages a group of goroutines for handling reconnection logic within the client lifecycle.
+	reconnectGroup *errgroup.Group
+
+	// reconnectGroupCtx provides the context for managing the lifecycle of the reconnection goroutine(s) within the client.
 	reconnectGroupCtx context.Context
-	// status variables
-	isActive            atomic.Bool
-	isConnected         atomic.Bool
-	isWelcomeReceived   atomic.Bool
+
+	// isActive is an atomic.Boolean that indicates whether the client is currently active or in use.
+	isActive atomic.Bool
+
+	// isConnected indicates whether the client is currently connected. Managed using an atomic boolean for concurrency safety.
+	isConnected atomic.Bool
+
+	// isWelcomeReceived indicates whether the welcome message from the server has been successfully received and processed.
+	isWelcomeReceived atomic.Bool
+
+	// isReconnectRequired indicates whether the client is required to reconnect, controlled via atomic operations.
 	isReconnectRequired atomic.Bool
-	msgTracking         *ttlcache.Cache[string, string]
-	state               clientState
-	// connection related stuff
-	url                string
-	keepaliveTimeout   time.Duration
+
+	// msgTracking maintains a cache for tracking message IDs along with their timestamps to handle deduplication and expiration.
+	msgTracking *ttlcache.Cache[string, string]
+
+	// state represents the current lifecycle state of the Client, determining its operational mode and transitions.
+	state clientState
+
+	// url specifies the WebSocket server address the client connects to or interacts with.
+	url string
+
+	// keepaliveTimeout represents the duration within which a keepalive message is expected to maintain connection health.
+	keepaliveTimeout time.Duration
+
+	// lastHeardTimestamp stores the last known timestamp when the client received a message or activity.
 	lastHeardTimestamp time.Time
-	// event callbacks
-	onConnect    OnEventFn
+
+	// onConnect is a callback executed when the client successfully connects to the WebSocket server.
+	onConnect OnEventFn
+
+	// onDisconnect is the callback function executed when the client disconnects from the server.
 	onDisconnect OnEventFn
-	// message event callbacks
-	onWelcomeMessage      OnMessageEventFn
-	onKeepaliveMessage    OnMessageEventFn
+
+	// onWelcomeMessage is a callback function to handle events triggered on receiving a welcome message from the server.
+	onWelcomeMessage OnMessageEventFn
+
+	// onKeepaliveMessage is a callback function invoked to handle keepalive messages received by the client.
+	onKeepaliveMessage OnMessageEventFn
+
+	// onNotificationMessage defines a callback for handling incoming notification messages with associated metadata and payload.
 	onNotificationMessage OnMessageEventFn
-	onRevocationMessage   OnMessageEventFn
-	onReconnectMessage    OnMessageEventFn
+
+	// onRevocationMessage is a callback function triggered when a revocation message is received by the client.
+	onRevocationMessage OnMessageEventFn
+
+	// onReconnectMessage defines a callback function triggered when a reconnect message is received by the client.
+	onReconnectMessage OnMessageEventFn
 }
 
 func init() {
@@ -157,14 +235,17 @@ func init() {
 	log.SetOutput(os.Stdout)
 }
 
+// NewClientDefault creates a new Client instance with the default websocketTwitch URL and optional configuration options.
 func NewClientDefault(opts ...Option) *Client {
 	return newClient(websocketTwitch, opts...)
 }
 
+// NewClient creates and returns a new Client instance configured with the provided WebSocket URL and optional settings.
 func NewClient(url string, opts ...Option) *Client {
 	return newClient(url, opts...)
 }
 
+// newClient creates and initializes a new Client instance with the specified URL and optional configuration options.
 func newClient(url string, opts ...Option) *Client {
 	c := &Client{
 		conn:             nil,
@@ -184,6 +265,8 @@ func newClient(url string, opts ...Option) *Client {
 	return c
 }
 
+// Connect establishes a connection by initializing contexts, transitioning to the connecting state, and starting the worker.
+// Returns an error if the client is already active.
 func (c *Client) Connect() error {
 	if !c.setActive() {
 		return ErrAlreadyInUse
@@ -200,10 +283,12 @@ func (c *Client) Connect() error {
 	return nil
 }
 
+// Wait blocks until all client tasks have completed. Returns any error encountered during awaiting.
 func (c *Client) Wait() error {
 	return c.waitGroup.Wait()
 }
 
+// Close gracefully terminates the client's connection, stops the worker, cancels contexts, and waits for cleanup to complete.
 func (c *Client) Close() error {
 	if !c.setInactive() {
 		return ErrNotConnected
@@ -215,50 +300,64 @@ func (c *Client) Close() error {
 	return err
 }
 
+// setActive attempts to set the client's active status to true using an atomic operation.
+// Returns true if the status was successfully changed from false to true, false otherwise.
 func (c *Client) setActive() bool {
 	return c.isActive.CompareAndSwap(false, true)
 }
 
+// setInactive attempts to set the client's active status to false using an atomic operation.
+// Returns true if the status was successfully changed from true to false, false otherwise.
 func (c *Client) setInactive() bool {
 	return c.isActive.CompareAndSwap(true, false)
 }
 
+// setConnected sets the client's connected status to true using an atomic operation.
 func (c *Client) setConnected() {
 	c.isConnected.Store(true)
 }
 
+// setDisconnected sets the client's connected status to false using an atomic operation.
 func (c *Client) setDisconnected() {
 	c.isConnected.Store(false)
 }
 
+// getIsConnected returns the current connection status of the client as a boolean value.
 func (c *Client) getIsConnected() bool {
 	return c.isConnected.Load()
 }
 
+// getIsWelcomeReceived returns the current state of whether a welcome message has been received by the client.
 func (c *Client) getIsWelcomeReceived() bool {
 	return c.isWelcomeReceived.Load()
 }
 
+// isConnectionAlive checks if the connection is still alive by comparing the current time with the last heard timestamp.
 func (c *Client) isConnectionAlive() bool {
 	return time.Now().Before(c.lastHeardTimestamp.Add(c.keepaliveTimeout))
 }
 
+// initMainContext initializes the main context and its cancellation function for the Client.
 func (c *Client) initMainContext() {
 	c.ctx, c.ctxCancel = context.WithCancel(context.Background())
 }
 
+// initOperationContext initializes the operation context and its cancellation function using the main context.
 func (c *Client) initOperationContext() {
 	c.opCtx, c.opCtxCancel = context.WithCancel(c.mainContext())
 }
 
+// mainContext returns the main context associated with the client instance. It is used to manage overall context lifecycles.
 func (c *Client) mainContext() context.Context {
 	return c.ctx
 }
 
+// operationContext returns the operation-specific context for managing tasks and cancellation within the Client instance.
 func (c *Client) operationContext() context.Context {
 	return c.opCtx
 }
 
+// cleanUp resets client state, clears message tracking, and closes the connection with appropriate status and reason.
 func (c *Client) cleanUp(err error) {
 	c.lastHeardTimestamp = time.Time{}
 	c.isWelcomeReceived.Store(false)
@@ -281,6 +380,8 @@ func (c *Client) cleanUp(err error) {
 	_ = c.conn.Close(status, reason)
 }
 
+// worker manages the state transitions of the Client, handling connection, reconnection, and disconnection processes.
+// Returns an error if encountered during state handling or cleanup.
 func worker(c *Client) error {
 	var (
 		err        error
@@ -341,6 +442,8 @@ func worker(c *Client) error {
 	}
 }
 
+// connectingStateHandler attempts to establish a WebSocket connection for the provided client.
+// Returns an error if the connection fails, appending ErrConnectionFailed to the error chain.
 func connectingStateHandler(c *Client) error {
 	var err error
 	c.conn, _, err = websocket.Dial(c.operationContext(), c.url, nil)
@@ -353,6 +456,9 @@ func connectingStateHandler(c *Client) error {
 	return nil
 }
 
+// connectedStateHandler manages the state of the connected client, processing messages and checking connection health.
+// It handles reconnections, message expiration, and client state transitions.
+// Returns true if the connection should close cleanly or false if reconnection is required, along with any error encountered.
 func connectedStateHandler(c *Client) (bool, error) {
 	for {
 		select {
@@ -386,6 +492,8 @@ func connectedStateHandler(c *Client) (bool, error) {
 	}
 }
 
+// singleMessageHandler processes a single incoming WebSocket message, updates message tracking, and invokes appropriate handlers.
+// Returns an error if message reading, metadata extraction, or handling fails.
 func singleMessageHandler(c *Client) error {
 	ctx, cancel := context.WithTimeout(c.operationContext(), c.keepaliveTimeout)
 	defer cancel()
@@ -431,6 +539,7 @@ func singleMessageHandler(c *Client) error {
 	return nil
 }
 
+// getMessageMetadata extracts and unmarshals the metadata from a WebSocket message, returning it or an appropriate error.
 func getMessageMetadata(msgType websocket.MessageType, data []byte) (*Metadata, error) {
 	if msgType == websocket.MessageBinary {
 		return nil, errWebsocketReadError
@@ -445,6 +554,8 @@ func getMessageMetadata(msgType websocket.MessageType, data []byte) (*Metadata, 
 	return m, nil
 }
 
+// reconnectNewConnection attempts to reconnect the client to a new WebSocket connection using the specified URL.
+// It updates the client's URL and establishes a new connection with the server, returning an error if it fails.
 func reconnectNewConnection(c *Client, url string) error {
 	var err error
 	c.url = url
@@ -453,6 +564,9 @@ func reconnectNewConnection(c *Client, url string) error {
 	return err
 }
 
+// reconnectWaitWelcome attempts to read and process a "session_welcome" message from the reconnect connection.
+// It waits for the welcome message within a timeout duration and transitions the client if successful.
+// Returns an error if the timeout expires or if any issues occur during the process.
 func reconnectWaitWelcome(c *Client) error {
 	var (
 		err             error
@@ -508,6 +622,8 @@ func reconnectWaitWelcome(c *Client) error {
 	return nil
 }
 
+// reconnectHandler attempts to reconnect the client to a new connection and waits for a "session_welcome" message.
+// Returns an error if reconnecting or receiving the welcome message fails.
 func reconnectHandler(c *Client, url string) error {
 	err := reconnectNewConnection(c, url)
 
@@ -518,6 +634,7 @@ func reconnectHandler(c *Client, url string) error {
 	return reconnectWaitWelcome(c)
 }
 
+// welcomeMessageHandler processes the "session_welcome" message, updates client state, and returns payload and callback.
 func welcomeMessageHandler(c *Client, metadata *Metadata, data []byte) (*Payload, OnMessageEventFn, error) {
 	s, err := unmarshalSession(data)
 	e := Payload{
@@ -533,6 +650,7 @@ func welcomeMessageHandler(c *Client, metadata *Metadata, data []byte) (*Payload
 	return &e, c.onWelcomeMessage, err
 }
 
+// keepaliveMessageHandler processes "session_keepalive" messages, updates last heard timestamp, and returns payload and callback.
 func keepaliveMessageHandler(c *Client, metadata *Metadata, data []byte) (*Payload, OnMessageEventFn, error) {
 	e := Payload{
 		Payload: struct{}{},
@@ -546,6 +664,8 @@ func keepaliveMessageHandler(c *Client, metadata *Metadata, data []byte) (*Paylo
 	return &e, c.onKeepaliveMessage, err
 }
 
+// notificationMessageHandler processes "notification" messages by parsing data into a payload and updating client state.
+// It returns the parsed payload, the onNotificationMessage callback function, and any error encountered during processing.
 func notificationMessageHandler(c *Client, metadata *Metadata, data []byte) (*Payload, OnMessageEventFn, error) {
 	payload, err := processNotification(data)
 
@@ -558,6 +678,7 @@ func notificationMessageHandler(c *Client, metadata *Metadata, data []byte) (*Pa
 	return payload, c.onNotificationMessage, err
 }
 
+// revocationMessageHandler processes a "revocation" message, updates the client's state, and returns payload and callback.
 func revocationMessageHandler(c *Client, metadata *Metadata, data []byte) (*Payload, OnMessageEventFn, error) {
 	payload, err := processNotification(data)
 
@@ -570,6 +691,7 @@ func revocationMessageHandler(c *Client, metadata *Metadata, data []byte) (*Payl
 	return payload, c.onRevocationMessage, err
 }
 
+// reconnectMessageHandler processes the "session_reconnect" message, initializing reconnect tasks and callbacks.
 func reconnectMessageHandler(c *Client, _ *Metadata, data []byte) (*Payload, OnMessageEventFn, error) {
 	s, err := unmarshalSession(data)
 	e := Payload{
@@ -587,6 +709,7 @@ func reconnectMessageHandler(c *Client, _ *Metadata, data []byte) (*Payload, OnM
 	return &e, c.onReconnectMessage, err
 }
 
+// unmarshalMetadata unmarshals JSON-encoded data into a Metadata struct and returns it or an error if unmarshaling fails.
 func unmarshalMetadata(data []byte) (*Metadata, error) {
 	var m struct {
 		Metadata `json:"metadata"`
@@ -601,6 +724,7 @@ func unmarshalMetadata(data []byte) (*Metadata, error) {
 	return &m.Metadata, nil
 }
 
+// unmarshalEnvelope deserializes JSON data into the provided interface and logs any errors encountered during unmarshalling.
 func unmarshalEnvelope(data []byte, e any) error {
 	err := json.Unmarshal(data, &e)
 
@@ -611,6 +735,7 @@ func unmarshalEnvelope(data []byte, e any) error {
 	return err
 }
 
+// unmarshalSession extracts a Session object from a JSON byte slice, returning it or an error if deserialization fails.
 func unmarshalSession(data []byte) (Session, error) {
 	var payload struct {
 		Payload struct {
@@ -625,6 +750,7 @@ func unmarshalSession(data []byte) (Session, error) {
 	return payload.Payload.Session, nil
 }
 
+// unmarshalNotification parses the provided JSON data into a Notification object and validates its subscription and event details.
 func unmarshalNotification(data []byte) (Notification, error) {
 	var msg json.RawMessage
 	payload := Payload{
@@ -680,6 +806,7 @@ func unmarshalNotification(data []byte) (Notification, error) {
 	return notification, nil
 }
 
+// keepaliveIntervalCalc calculates the keepalive timeout duration based on a given interval reduced by a predefined percentage.
 func keepaliveIntervalCalc(keepaliveInterval int) time.Duration {
 	const keepalivePercent = 80
 	// consider reported keepalive timeout to be 80% value to be used
@@ -687,6 +814,7 @@ func keepaliveIntervalCalc(keepaliveInterval int) time.Duration {
 	return time.Duration(keepaliveInterval*100/keepalivePercent) * time.Second
 }
 
+// processNotification parses the notification data into a Payload and returns it along with any error encountered.
 func processNotification(data []byte) (*Payload, error) {
 	notification, err := unmarshalNotification(data)
 
