@@ -482,7 +482,12 @@ func worker(c *Client) error {
 			}
 		case stateReconnecting:
 			c.initOperationContext()
-			_ = c.conn.Close(websocket.StatusServiceRestart, "")
+			err := c.conn.Close(websocket.StatusNormalClosure, "")
+
+			if err != nil {
+				log.Error("reconnecting state", "err", err)
+			}
+
 			c.conn, c.reconnectConn = c.reconnectConn, nil
 			c.state = stateConnected
 		case stateDisconnected:
@@ -532,8 +537,11 @@ func connectedStateHandler(c *Client) (bool, error) {
 			err := singleMessageHandler(c)
 
 			if err != nil {
-				if errors.Is(err, context.Canceled) {
-					if c.isReconnectRequired.Load() {
+				log.Error("Message Handling Error", "err", err)
+				isAwaitingReconnect := c.isReconnectRequired.Load()
+
+				if errors.Is(err, context.Canceled) || isAwaitingReconnect {
+					if isAwaitingReconnect {
 						err := c.reconnectGroup.Wait()
 						log.Debug("Reconnect done", "err", err)
 
@@ -542,7 +550,7 @@ func connectedStateHandler(c *Client) (bool, error) {
 
 					return true, err
 				} else if !errors.Is(err, errNotSupported) {
-					log.Error("Reconnect not supported", "err", err)
+					log.Error("Error while connected", "err", err)
 					return false, err
 				}
 			}
@@ -568,6 +576,7 @@ func singleMessageHandler(c *Client) error {
 		return errors.Join(err, errWebsocketReadError)
 	}
 
+	log.Debug("Read message", "msgType", msgType, "data", data, "err", err)
 	m, err := getMessageMetadata(msgType, data)
 
 	if err != nil {
@@ -637,9 +646,10 @@ func reconnectWaitWelcome(c *Client) error {
 		welcomeReceived bool
 	)
 	end := time.Now().Add(time.Minute)
+	log.Debug("start reconnect welcome message wait")
 
 	for {
-		if end.After(time.Now()) {
+		if !end.After(time.Now()) {
 			return errReconnectTimeoutExpire
 		}
 
@@ -660,6 +670,7 @@ func reconnectWaitWelcome(c *Client) error {
 			}
 
 			if m.MessageType == "session_welcome" {
+				log.Debug("received reconnect wait welcome message")
 				_, _, err = welcomeMessageHandler(c, m, data)
 
 				if err != nil {
@@ -677,6 +688,7 @@ func reconnectWaitWelcome(c *Client) error {
 		}
 
 		if welcomeReceived {
+			log.Debug("Reconnect cancel operation context")
 			// cancel operation context to allow connections swap
 			c.opCtxCancel()
 			break
@@ -690,6 +702,7 @@ func reconnectWaitWelcome(c *Client) error {
 // Returns an error if reconnecting or receiving the welcome message fails.
 func reconnectHandler(c *Client, url string) error {
 	err := reconnectNewConnection(c, url)
+	log.Debug("Reconnect new connection", "url", url, "err", err)
 
 	if err != nil {
 		return err
@@ -761,6 +774,8 @@ func reconnectMessageHandler(c *Client, _ *Metadata, data []byte) (*Payload, OnM
 	e := Payload{
 		Payload: s,
 	}
+
+	log.Debug("reconnect message received", "payload", s)
 
 	if err == nil {
 		c.isReconnectRequired.Store(true)
@@ -834,7 +849,7 @@ func unmarshalNotification(data []byte) (Notification, error) {
 		return Notification{}, err
 	}
 
-	e, ok := eventSubTypes[notification.Subscription.Type]
+	e, ok := EventSubTypes[notification.Subscription.Type]
 
 	if !ok {
 		err := fmt.Errorf("unsupported event: %s", notification.Subscription.Type)
