@@ -8,8 +8,9 @@ type eventSubScope struct {
 	ConditionType interface{}
 }
 
+// EventSubTypes defines a mapping of event types to eventSubScope slices, specifying different versions and message types for each event.
 var (
-	eventSubTypes = map[string][]eventSubScope{
+	EventSubTypes = map[string][]eventSubScope{
 		"automod.message.hold": {
 			{Version: "1", MsgType: nil},
 			{Version: "2", MsgType: nil},
