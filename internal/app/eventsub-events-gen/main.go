@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"go/format"
+	"log/slog"
 	"os"
 	"path"
 	"strings"
 	"text/template"
 
-	"github.com/sirupsen/logrus"
 	"golang.org/x/net/html"
 
 	"github.com/vpetrigo/go-twitch-ws/internal/pkg/crawler"
@@ -65,26 +65,27 @@ type tableRowProcessor interface {
 
 type tableRowProcessWithFn func(*html.Node)
 
+var log *slog.Logger
+
 func (t tableRowProcessWithFn) RowHandler(tableRow *html.Node) {
 	t(tableRow)
 }
 
 func init() {
-	logrus.SetFormatter(&logrus.TextFormatter{
-		ForceColors: true,
-	})
-	logrus.SetLevel(logrus.DebugLevel)
+	slog.SetLogLoggerLevel(slog.LevelDebug)
+	log = slog.Default()
 }
 
 func main() {
 	resp, err := refdoc.GetReferenceDocPage(eventsubEventsRefURL)
 
 	if err != nil {
-		logrus.Fatal(err)
+		log.Error("failed to get reference doc page", "url", eventsubEventsRefURL, "error", err)
+		panic("failed to get reference doc page")
 	}
 
 	events := getEvents(resp)
-	logrus.Debugf("Events size: %d", len(events))
+	log.Debug("events size", "size", len(events))
 	_ = generateEventsubFiles(events)
 }
 
@@ -119,13 +120,13 @@ func (e *eventsubEventCrawler) Crawl(node *html.Node) {
 func (e *eventsubEventCrawler) checkMainEventHeader(node *html.Node) {
 	if node.Data == "h2" {
 		text := node.FirstChild
-		logrus.Debugf("Found: %s", text.Data)
+		log.Debug("main event header", "found", text.Data)
 
 		if text.Data == "Events" {
 			e.state = eventHeaderSearch
-			logrus.Debugf("Events Found")
+			log.Debug("events found")
 		} else if strings.Contains(text.Data, "Condition") {
-			logrus.Debugf("Condition found %s", text.Data)
+			log.Debug("conditions found")
 			processConditions(node)
 		}
 	}
@@ -143,9 +144,9 @@ func (e *eventsubEventCrawler) checkEventHeader(node *html.Node) {
 		if strings.HasSuffix(headerText, "Event") {
 			e.tempEvent = newEventsubEvent(headerText)
 			e.state = eventTableSearch
-			logrus.Tracef("Found: %s", d)
+			log.Debug("event found", "event", d)
 		} else {
-			logrus.Errorf("Event ends on %#v", node)
+			log.Error("event header not found", "event", node)
 			e.state = eventHeaderSearch
 		}
 	} else if isShoutOutHeader || isShieldHeader {
@@ -160,7 +161,7 @@ func (e *eventsubEventCrawler) checkEventHeader(node *html.Node) {
 func (e *eventsubEventCrawler) checkEventTable(node *html.Node) {
 	if node.Data == "table" {
 		e.state = eventTableVerify
-		logrus.Trace("Table Found")
+		log.Debug("Table Found")
 	}
 }
 
@@ -283,7 +284,7 @@ func writeComplexTypes(outDir string, defaultFileAccess os.FileMode) error {
 	t, err := template.ParseFiles(anotherTemplate)
 
 	if err != nil {
-		logrus.Error(err)
+		log.Error("failed to parse template", "err", err)
 
 		return err
 	}
@@ -291,7 +292,7 @@ func writeComplexTypes(outDir string, defaultFileAccess os.FileMode) error {
 	err = t.Execute(&buf, complexTypes)
 
 	if err != nil {
-		logrus.Error(err)
+		log.Error("failed to execute template", "err", err)
 
 		return err
 	}
@@ -300,7 +301,7 @@ func writeComplexTypes(outDir string, defaultFileAccess os.FileMode) error {
 	err = os.WriteFile(outFile, b, defaultFileAccess)
 
 	if err != nil {
-		logrus.Error(err)
+		log.Error("failed to write file", "err", err)
 
 		return err
 	}
@@ -313,7 +314,7 @@ func writeMainTypes(events []eventsubEvent, outDir string, defaultFileAccess os.
 	t, err := template.ParseFiles(templatePath)
 
 	if err != nil {
-		logrus.Error(err)
+		log.Error("failed to parse template", "err", err)
 
 		return err
 	}
@@ -321,7 +322,7 @@ func writeMainTypes(events []eventsubEvent, outDir string, defaultFileAccess os.
 	for i, e := range events {
 		fileName := getFileName(e.SpaceSeparatedName)
 
-		logrus.Tracef("file #%2d: %s", i+1, fileName)
+		log.Debug("event", "event", e, "file", fileName, "id", i+1)
 		e.stripDescriptionToComment()
 		e.updateTypeToGoAcceptable()
 
@@ -329,7 +330,7 @@ func writeMainTypes(events []eventsubEvent, outDir string, defaultFileAccess os.
 		err := t.Execute(&buf, e)
 
 		if err != nil {
-			logrus.Error(err)
+			log.Error("failed to execute template", "err", err)
 
 			return err
 		}
@@ -425,7 +426,8 @@ func getEventsubFieldFromTable(tr *html.Node) (eventsubEventField, fieldTypeRela
 		innerTag := td.FirstChild
 
 		if innerTag == nil {
-			logrus.Fatalf("Invalid inner tag for %+v", td)
+			log.Error("inner tag not found", "td", td)
+			panic("inner tag not found")
 		}
 
 		value := getElementValue(innerTag)
@@ -449,7 +451,7 @@ func getEventsubFieldFromTable(tr *html.Node) (eventsubEventField, fieldTypeRela
 
 		if position == done {
 			fieldEvent = newEventsubEventField(fieldName, fieldTy, fieldDescription)
-			logrus.Tracef("Resulted field: %#v", fieldEvent)
+			log.Debug("field event", "field", fieldEvent)
 		}
 	}
 

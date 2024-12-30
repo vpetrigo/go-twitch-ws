@@ -1,9 +1,11 @@
 package main
 
 import (
-	"github.com/sirupsen/logrus"
-	"github.com/vpetrigo/go-twitch-ws/internal/pkg/crawler"
+	"log/slog"
+
 	"golang.org/x/net/html"
+
+	"github.com/vpetrigo/go-twitch-ws/internal/pkg/crawler"
 )
 
 type conditionCrawlerState int
@@ -55,14 +57,14 @@ func (c *conditionCrawler) headerSearch(node *html.Node) {
 	if node.Data == "h3" {
 		h := node.FirstChild.Data
 		c.state = conditionFieldsTableSearchState
-		logrus.Debugf("Header: %s", h)
+		slog.Debug("header", "h", h)
 	}
 }
 
 func (c *conditionCrawler) tableSearch(node *html.Node) {
 	if node.Data == "table" {
 		c.state = conditionFieldsTableVerifyState
-		logrus.Trace("Condition Table Found")
+		slog.Debug("condition table found")
 	}
 }
 
@@ -86,9 +88,7 @@ func (c *conditionCrawler) tableBody(node *html.Node) {
 func (c *conditionCrawler) tableParse(node *html.Node) {
 	processor := func(tableRow *html.Node) {
 		field, fieldType := getEventsubFieldFromTable(tableRow)
-
-		logrus.Debugf("%#v %d", field, fieldType)
-
+		slog.Debug("parse table", "field", field, "field type", fieldType)
 		if fieldType != mainField {
 			panic("unexpected inner field in the condition type")
 		}
