@@ -1,10 +1,10 @@
-module examples/test-client
+module github.com/vpetrigo/go-twitch-ws/examples/test-client
 
 go 1.23
 
 require (
 	github.com/nicklaw5/helix/v2 v2.31.0
-	github.com/vpetrigo/go-twitch-ws v0.1.0
+	github.com/vpetrigo/go-twitch-ws v0.1.1
 )
 
 require (
