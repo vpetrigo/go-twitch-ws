@@ -1,6 +1,7 @@
 [![lint](https://github.com/vpetrigo/go-twitch-ws/actions/workflows/golangci-lint.yml/badge.svg)](https://github.com/vpetrigo/go-twitch-ws/actions/workflows/golangci-lint.yml)
 [![tests](https://github.com/vpetrigo/go-twitch-ws/actions/workflows/tests.yml/badge.svg)](https://github.com/vpetrigo/go-twitch-ws/actions/workflows/tests.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/vpetrigo/go-twitch-ws.svg)](https://pkg.go.dev/github.com/vpetrigo/go-twitch-ws)
+[![Go Report Card](https://goreportcard.com/badge/github.com/vpetrigo/go-twitch-ws)](https://goreportcard.com/report/github.com/vpetrigo/go-twitch-ws)
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/vpetrigo/go-twitch-ws)
 ![GitHub Release](https://img.shields.io/github/v/release/vpetrigo/go-twitch-ws)
 

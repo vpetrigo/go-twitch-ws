@@ -12,74 +12,102 @@
 package main
 
 import (
-	"os"
+	"log/slog"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"github.com/nicklaw5/helix/v2"
 
 	"github.com/vpetrigo/go-twitch-ws"
 	"github.com/vpetrigo/go-twitch-ws/pkg/eventsub"
 )
 
+const helixTwitchTestServer = "http://127.0.0.1:8080"
 const websocketTwitchTestServer = "ws://127.0.0.1:8080/ws"
 
+var log *slog.Logger
+
 func main() {
-	logrus.SetLevel(logrus.DebugLevel)
-	logrus.SetOutput(os.Stdout)
-	logrus.SetFormatter(&logrus.TextFormatter{
-		ForceColors: true,
-	})
+	slog.SetLogLoggerLevel(slog.LevelDebug)
+	log = slog.Default()
+
+	log.Debug("Starting the test client...")
 	c := twitchws.NewClient(
 		websocketTwitchTestServer,
 		twitchws.WithOnWelcome(onWelcomeEvent),
 		twitchws.WithOnNotification(onNotificationEvent),
 		twitchws.WithOnConnect(onConnect),
 		twitchws.WithOnDisconnect(onDisconnect),
-		twitchws.WithOnRevocation(onRevocationEvent))
+		twitchws.WithOnRevocation(onRevocationEvent),
+		twitchws.WithOnReconnect(onReconnect))
 
 	err := c.Connect()
 
 	if err != nil {
-		logrus.Fatal(err)
+		log.Error("connect error", "err", err)
 	}
 
 	err = c.Wait()
 
 	if err != nil {
-		logrus.Fatal(err)
+		log.Error("wait error", "err", err)
 	}
 
 	err = c.Close()
 
 	if err != nil {
-		logrus.Fatal(err)
+		log.Error("close error", "err", err)
 	}
 }
 
 func onWelcomeEvent(metadata *twitchws.Metadata, payload *twitchws.Payload) {
-	logrus.Debugf("Metadata: %+v", metadata)
-	logrus.Debugf("Payload: %+v", payload)
+	log.Debug("Welcome message:", "metadata", metadata)
+	log.Debug("Payload:", "payload", payload)
+	helixClient, err := helix.NewClient(&helix.Options{
+		ClientID:     "pm8irdclcqvj3it9ev4h6hccrk7ebv",
+		ClientSecret: "fpak1tegsg57hdp4t6ltvjzv7f8akq",
+		APIBaseURL:   helixTwitchTestServer,
+	})
+
+	if err != nil {
+		log.Error("helix client error", "err", err)
+		return
+	}
+
+	session, _ := payload.Payload.(twitchws.Session)
+	response, err := helixClient.CreateEventSubSubscription(&helix.EventSubSubscription{
+		Type:    helix.EventSubTypeChannelFollow,
+		Version: "2",
+		Transport: helix.EventSubTransport{
+			Method:    "websocket",
+			SessionID: session.ID,
+		},
+	})
+	log.Debug("helix response", "response", response)
 }
 
 func onNotificationEvent(metadata *twitchws.Metadata, payload *twitchws.Payload) {
 	notification := payload.Payload.(twitchws.Notification)
-	logrus.Debugf("Metadata: %+v", metadata)
-	logrus.Debugf("Notification: %+v", notification)
+	log.Debug("Metadata:", "metadata", metadata)
+	log.Debug("Notification:", "notification", notification)
 
 	if event, ok := notification.Event.(*eventsub.ChannelFollowEvent); ok {
-		logrus.Debugf("Channel follow: %+v", event)
-		logrus.Debugf("Condition: %+v", notification.Subscription.Condition)
+		log.Debug("", "event", event)
+		log.Debug("", "condition", notification.Subscription.Condition)
 	}
 }
 
+func onReconnect(metadata *twitchws.Metadata, payload *twitchws.Payload) {
+	log.Debug("Reconnect:", "metadata", metadata, "payload", payload)
+}
+
 func onRevocationEvent(_ *twitchws.Metadata, payload *twitchws.Payload) {
-	logrus.Debugf("Revocation: %+v", payload)
+	log.Debug("Revocation:", payload)
 }
 
 func onConnect() {
-	logrus.Debugf("Connected: %s", time.Now().Format(time.RFC3339))
+	log.Debug("Connected:", "time", time.Now().Format(time.RFC3339))
 }
 
 func onDisconnect() {
-	logrus.Debugf("Disconnected: %s", time.Now().Format(time.RFC3339))
+	log.Debug("Disconnected:", "time", time.Now().Format(time.RFC3339))
 }

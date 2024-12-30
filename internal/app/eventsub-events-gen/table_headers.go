@@ -1,9 +1,11 @@
 package main
 
 import (
-	"github.com/sirupsen/logrus"
-	"github.com/vpetrigo/go-twitch-ws/internal/pkg/crawler"
+	"log/slog"
+
 	"golang.org/x/net/html"
+
+	"github.com/vpetrigo/go-twitch-ws/internal/pkg/crawler"
 )
 
 var (
@@ -51,7 +53,7 @@ func validateTableHeading(tr *html.Node, validHeading []string) bool {
 		out = append(out, th.FirstChild.Data)
 	}
 
-	logrus.Tracef("expected: %v, actual: %v", validHeading, out)
+	slog.Debug("validate table heading", "expected", validHeading, "actual", out)
 
 	if validationSliceLen != len(out) {
 		return false
@@ -76,7 +78,7 @@ func verifyHeader(node *html.Node, checker ...withTableValidatorFn) bool {
 	}
 
 	if tr == nil {
-		logrus.Errorf("nil table row: %#v", node)
+		slog.Error("nil table row", "node", node)
 		return false
 	}
 

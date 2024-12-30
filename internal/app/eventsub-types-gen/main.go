@@ -5,19 +5,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"go/format"
-	"log"
+
+	"log/slog"
 	"os"
 	"strings"
 	"text/template"
 
-	"github.com/sirupsen/logrus"
 	"golang.org/x/net/html"
 
 	"github.com/vpetrigo/go-twitch-ws/internal/pkg/crawler"
 	"github.com/vpetrigo/go-twitch-ws/internal/pkg/refdoc"
 )
 
-const eventsubTypesFile = "eventsub_types.go"
+const eventsubTypesFile = "eventsub.go"
 const eventsubTypesRefURL = "https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/"
 const eventsubTypesFileTemplate = `package twitchws
 
@@ -73,22 +73,21 @@ const (
 	endSearch
 )
 
+var log *slog.Logger
+
 func main() {
-	logrus.SetLevel(logrus.DebugLevel)
-	logrus.SetFormatter(&logrus.TextFormatter{
-		ForceColors:   true,
-		FullTimestamp: true,
-	})
+	slog.SetLogLoggerLevel(slog.LevelDebug)
+	log = slog.Default()
 	body, err := refdoc.GetReferenceDocPage(eventsubTypesRefURL)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Error("get reference doc page error", "err", err)
 	}
 
 	types := getSubscriptionTypes(body)
 
 	if err = generateFile(types); err != nil {
-		logrus.Fatal(err)
+		log.Error("get subscription types error", "err", err)
 	}
 }
 
@@ -168,7 +167,7 @@ func (e *eventsubCrawler) checkEventsubTableHeading(node *html.Node) {
 			out = append(out, th.FirstChild.Data)
 		}
 
-		logrus.Tracef("expected: %v, actual: %v", validHeading, out)
+		log.Debug("check EventSub Table Heading", "expected", validHeading, "actual", out)
 
 		if len(validHeading) != len(out) {
 			e.state = headingSearch
@@ -225,7 +224,7 @@ func (e *eventsubCrawler) checkRowStart(node *html.Node) {
 			innerTag := td.FirstChild
 
 			if innerTag == nil {
-				logrus.Fatalf("Invalid inner tag for %+v", td)
+				log.Error("invalid tag for <td>", "tag", td)
 				continue
 			}
 
@@ -233,7 +232,7 @@ func (e *eventsubCrawler) checkRowStart(node *html.Node) {
 				innerTag = skipToAnchor(innerTag)
 
 				if innerTag == nil {
-					log.Fatal("No anchor after span")
+					panic("No anchor after span")
 				}
 			}
 
@@ -258,11 +257,12 @@ func (e *eventsubCrawler) checkRowStart(node *html.Node) {
 						panic("unhandled default case")
 					}
 
-					logrus.Tracef("a/code: %s", value)
+					log.Debug("a/code", "value", value, "position", position)
 				}
 			} else {
 				if position != eventsubDescription {
-					logrus.Fatalf("Invalid position when text found: %d", position)
+					log.Error("invalid position when text found", "position", position)
+					panic("invalid position when text found")
 				}
 
 				var sb strings.Builder
@@ -279,7 +279,7 @@ func (e *eventsubCrawler) checkRowStart(node *html.Node) {
 			}
 		}
 
-		logrus.Tracef("Eventsub Type: %#v", evType)
+		log.Debug("EventSub Type", "type", evType)
 		e.Types = append(e.Types, evType)
 	}
 }
