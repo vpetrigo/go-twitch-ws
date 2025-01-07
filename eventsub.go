@@ -1,16 +1,28 @@
 package twitchws
 
-import "github.com/vpetrigo/go-twitch-ws/pkg/eventsub"
+import (
+	"errors"
 
-type eventSubScope struct {
+	"github.com/vpetrigo/go-twitch-ws/pkg/eventsub"
+)
+
+type EventSubScope struct {
 	Version       string
 	MsgType       interface{}
 	ConditionType interface{}
 }
 
-// EventSubTypes defines a mapping of event types to eventSubScope slices, specifying different versions and message types for each event.
 var (
-	EventSubTypes = map[string][]eventSubScope{
+	// errEventSubNotFound indicates that the requested EventSub configuration was not found in the available definitions.
+	errEventSubNotFound = errors.New("eventsub not found")
+
+	// errEventSubVersion indicates that the requested EventSub version was not found.
+	errEventSubVersion = errors.New("eventsub version not found")
+)
+
+// eventSubTypes defines a mapping of event types to eventSubScope slices, specifying different versions and message types for each event.
+var (
+	eventSubTypes = map[string][]EventSubScope{
 		"automod.message.hold": {
 			{Version: "1", MsgType: nil},
 			{Version: "2", MsgType: nil},
@@ -68,7 +80,7 @@ var (
 			{Version: "1", MsgType: &eventsub.ChannelChatClearUserMessagesEvent{}},
 		},
 		"channel.chat.message": {
-			{Version: "1", MsgType: nil},
+			{Version: "1", MsgType: &eventsub.ChannelChatMessage{}},
 		},
 		"channel.chat.message_delete": {
 			{Version: "1", MsgType: &eventsub.ChannelChatMessageDeleteEvent{}},
@@ -247,3 +259,21 @@ var (
 		},
 	}
 )
+
+func getEventSub(eventTypeKey, targetVersion string) (*EventSubScope, error) {
+	if subTypes, ok := eventSubTypes[eventTypeKey]; ok {
+		return getMatchingEventSub(subTypes, targetVersion)
+	}
+
+	return nil, errEventSubNotFound
+}
+
+func getMatchingEventSub(subTypes []EventSubScope, targetVersion string) (*EventSubScope, error) {
+	for _, subType := range subTypes {
+		if subType.Version == targetVersion && subType.MsgType != nil {
+			return &subType, nil
+		}
+	}
+
+	return nil, errEventSubVersion
+}
