@@ -33,7 +33,7 @@ const websocketTwitchTestServer = "ws://127.0.0.1:8080/ws"
 var log *slog.Logger
 
 func main() {
-	slog.SetLogLoggerLevel(slog.LevelDebug)
+	slog.SetLogLoggerLevel(slog.LevelInfo)
 	log = slog.Default()
 
 	log.Debug("Starting the test client...")
