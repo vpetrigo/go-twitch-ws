@@ -4,7 +4,7 @@ go 1.23
 
 require (
 	github.com/nicklaw5/helix/v2 v2.31.0
-	github.com/vpetrigo/go-twitch-ws v0.1.1
+	github.com/vpetrigo/go-twitch-ws v0.1.2
 )
 
 require (
