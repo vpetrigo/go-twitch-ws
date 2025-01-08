@@ -9,10 +9,16 @@
 // Test events can be sent like that:
 //
 //	twitch event trigger -T websocket channel.follow
+//
+// Required subscription types for the User App Token:
+//
+//	user:read:email user:read:follows moderator:read:followers user:write:chat user:read:chat
 package main
 
 import (
 	"log/slog"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/nicklaw5/helix/v2"
@@ -31,8 +37,7 @@ func main() {
 	log = slog.Default()
 
 	log.Debug("Starting the test client...")
-	c := twitchws.NewClient(
-		websocketTwitchTestServer,
+	c := twitchws.NewClientDefault(
 		twitchws.WithOnWelcome(onWelcomeEvent),
 		twitchws.WithOnNotification(onNotificationEvent),
 		twitchws.WithOnConnect(onConnect),
@@ -62,10 +67,22 @@ func main() {
 func onWelcomeEvent(metadata *twitchws.Metadata, payload *twitchws.Payload) {
 	log.Debug("Welcome message:", "metadata", metadata)
 	log.Debug("Payload:", "payload", payload)
+
+	clientID := os.Getenv("HELIX_CLIENT_ID")
+	clientSecret := os.Getenv("HELIX_CLIENT_SECRET")
+	userAccessToken := os.Getenv("HELIX_USER_ACCESS_TOKEN")
+	refreshToken := os.Getenv("HELIX_REFRESH_TOKEN")
+
+	if clientID == "" || clientSecret == "" || userAccessToken == "" || refreshToken == "" {
+		panic("HELIX_CLIENT_ID, HELIX_CLIENT_SECRET, HELIX_USER_ACCESS_TOKEN, HELIX_REFRESH_TOKEN must be set")
+	}
+
 	helixClient, err := helix.NewClient(&helix.Options{
-		ClientID:     "pm8irdclcqvj3it9ev4h6hccrk7ebv",
-		ClientSecret: "fpak1tegsg57hdp4t6ltvjzv7f8akq",
-		APIBaseURL:   helixTwitchTestServer,
+		ClientID:        clientID,
+		ClientSecret:    clientSecret,
+		UserAccessToken: userAccessToken,
+		RefreshToken:    refreshToken,
+		APIBaseURL:      helix.DefaultAPIBaseURL,
 	})
 
 	if err != nil {
@@ -74,15 +91,45 @@ func onWelcomeEvent(metadata *twitchws.Metadata, payload *twitchws.Payload) {
 	}
 
 	session, _ := payload.Payload.(twitchws.Session)
+
+	refresh, err := helixClient.RefreshUserAccessToken(helixClient.GetRefreshToken())
+
+	if err != nil {
+		log.Error("helix client error", "err", err)
+		return
+	}
+
+	log.Debug("token refresh", "response", refresh)
+	helixClient.SetUserAccessToken(refresh.Data.AccessToken)
+	helixClient.SetRefreshToken(refresh.Data.RefreshToken)
+
+	moderatorUserId := os.Getenv("HELIX_MOD_USER_ID")
+	broadcasterUserId := os.Getenv("HELIX_BROADCASTER_USER_ID")
+	userId := os.Getenv("HELIX_USER_ID")
+
+	if moderatorUserId == "" || broadcasterUserId == "" || userId == "" {
+		panic("HELIX_MOD_USER_ID, HELIX_BROADCASTER_USER_ID, HELIX_USER_ID must be set")
+	}
+
+	transport := helix.EventSubTransport{
+		Method:    "websocket",
+		SessionID: session.ID,
+	}
 	response, err := helixClient.CreateEventSubSubscription(&helix.EventSubSubscription{
-		Type:    helix.EventSubTypeChannelFollow,
-		Version: "2",
-		Transport: helix.EventSubTransport{
-			Method:    "websocket",
-			SessionID: session.ID,
-		},
+		Type:      helix.EventSubTypeChannelFollow,
+		Version:   "2",
+		Condition: helix.EventSubCondition{ModeratorUserID: moderatorUserId, BroadcasterUserID: broadcasterUserId},
+		Transport: transport,
 	})
-	log.Debug("helix response", "response", response)
+	log.Debug("EventSub channel.follow", "response", response)
+
+	response, err = helixClient.CreateEventSubSubscription(&helix.EventSubSubscription{
+		Type:      helix.EventSubTypeChannelChatMessage,
+		Version:   "1",
+		Condition: helix.EventSubCondition{BroadcasterUserID: broadcasterUserId, UserID: userId},
+		Transport: transport,
+	})
+	log.Debug("EventSub channel.chat.message", "response", response)
 }
 
 func onNotificationEvent(metadata *twitchws.Metadata, payload *twitchws.Payload) {
@@ -90,9 +137,49 @@ func onNotificationEvent(metadata *twitchws.Metadata, payload *twitchws.Payload)
 	log.Debug("Metadata:", "metadata", metadata)
 	log.Debug("Notification:", "notification", notification)
 
-	if event, ok := notification.Event.(*eventsub.ChannelFollowEvent); ok {
-		log.Debug("", "event", event)
-		log.Debug("", "condition", notification.Subscription.Condition)
+	switch event := notification.Event.(type) {
+	case *eventsub.ChannelFollowEvent:
+		log.Info("", "event", event)
+		log.Info("", "condition", notification.Subscription.Condition)
+	case *eventsub.ChannelChatMessage:
+		log.Info("message", "message", event.Message.Text, "from", event.ChatterUserName, "from_id", event.ChatterUserID)
+
+		clientID := os.Getenv("HELIX_CLIENT_ID")
+		clientSecret := os.Getenv("HELIX_CLIENT_SECRET")
+		userAccessToken := os.Getenv("HELIX_USER_ACCESS_TOKEN")
+		refreshToken := os.Getenv("HELIX_REFRESH_TOKEN")
+
+		if clientID == "" || clientSecret == "" || userAccessToken == "" || refreshToken == "" {
+			panic("HELIX_CLIENT_ID, HELIX_CLIENT_SECRET, HELIX_USER_ACCESS_TOKEN, HELIX_REFRESH_TOKEN must be set")
+		}
+
+		helixClient, err := helix.NewClient(&helix.Options{
+			ClientID:        clientID,
+			ClientSecret:    clientSecret,
+			UserAccessToken: userAccessToken,
+			RefreshToken:    refreshToken,
+			APIBaseURL:      helix.DefaultAPIBaseURL,
+		})
+
+		if err != nil {
+			log.Error("helix client error", "err", err)
+			return
+		}
+
+		if event.Reply != nil {
+			return
+		}
+
+		moderatorUserId := os.Getenv("HELIX_MOD_USER_ID")
+
+		response, err := helixClient.SendChatMessage(&helix.SendChatMessageParams{
+			BroadcasterID:        event.BroadcasterUserID,
+			Message:              strings.ToUpper(event.Message.Text),
+			SenderID:             moderatorUserId,
+			ReplyParentMessageID: event.MessageID,
+		})
+
+		log.Info("message sent", "response", response, "err", err)
 	}
 }
 
