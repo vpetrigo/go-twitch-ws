@@ -106,10 +106,6 @@ var (
 )
 
 var (
-
-	// errNotSupported indicates that the message type provided is not supported by the application.
-	errNotSupported = errors.New("message type is no supported")
-
 	// errWebsocketReadError represents an error that occurs during reading from a WebSocket connection.
 	errWebsocketReadError = errors.New("read error")
 
@@ -217,7 +213,7 @@ type Notification struct {
 }
 
 type Client struct {
-	// ctx is the main context for the client, used to manage the lifecycle and cancelation of ongoing operations.
+	// ctx is the main context for the client, used to manage the lifecycle and cancellation of ongoing operations.
 	ctx context.Context
 
 	// ctxCancel is a context cancel function used to terminate the main context of the client.
@@ -537,7 +533,7 @@ func connectedStateHandler(c *Client) (bool, error) {
 			err := singleMessageHandler(c)
 
 			if err != nil {
-				log.Error("Message Handling Error", "err", err)
+				log.Warn("Message Handling Error", "err", err)
 				isAwaitingReconnect := c.isReconnectRequired.Load()
 
 				if errors.Is(err, context.Canceled) || isAwaitingReconnect {
@@ -549,7 +545,7 @@ func connectedStateHandler(c *Client) (bool, error) {
 					}
 
 					return true, err
-				} else if !errors.Is(err, errNotSupported) {
+				} else if !errors.Is(err, errNotSupportedEvent) {
 					log.Error("Error while connected", "err", err)
 					return false, err
 				}
@@ -849,30 +845,20 @@ func unmarshalNotification(data []byte) (Notification, error) {
 		return Notification{}, err
 	}
 
-	e, ok := EventSubTypes[notification.Subscription.Type]
+	foundEventScope, err := getEventSub(notification.Subscription.Type, notification.Subscription.Version)
 
-	if !ok {
+	switch {
+	case errors.Is(err, errEventSubNotFound):
 		err := fmt.Errorf("unsupported event: %s", notification.Subscription.Type)
-		return Notification{}, errors.Join(errNotSupportedEvent, err)
-	}
-
-	var foundEventScope *eventSubScope
-
-	for i, v := range e {
-		if v.Version == notification.Subscription.Version {
-			foundEventScope = &e[i]
-			break
-		}
-	}
-
-	if foundEventScope == nil {
+		return Notification{}, errors.Join(errNotSupportedEvent, errEventSubNotFound, err)
+	case errors.Is(err, errEventSubVersion):
 		err := fmt.Errorf("unsupported event version: %s", notification.Subscription.Version)
-		return Notification{}, errors.Join(errNotSupportedEvent, err)
-	}
-
-	if foundEventScope.MsgType == nil {
-		err := fmt.Errorf("unsupported message: %s", notification.Subscription.Type)
-		return Notification{}, errors.Join(errNotSupportedEvent, err)
+		return Notification{}, errors.Join(errNotSupportedEvent, errEventSubVersion, err)
+	default:
+		if err != nil {
+			err := fmt.Errorf("unexpected error: %w", err)
+			return Notification{}, errors.Join(errNotSupportedEvent, err)
+		}
 	}
 
 	event := foundEventScope.MsgType
